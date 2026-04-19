@@ -33,6 +33,8 @@ const defaultRegulationIndex = 0;
 const defaultCompletionHistory = [];
 const defaultClaimedBadges = [];
 const defaultReminders = [];
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const allDays = [0, 1, 2, 3, 4, 5, 6];
 const defaultReminderPreferences = {
   soundEnabled: true,
   vibrationEnabled: false,
@@ -111,6 +113,9 @@ function normalizeReminders(value) {
       label: item.label,
       time: typeof item.time === 'string' ? item.time : '08:00',
       enabled: Boolean(item.enabled),
+      days: Array.isArray(item.days) && item.days.every((d) => allDays.includes(d))
+        ? item.days
+        : allDays,
     }));
 }
 
@@ -797,6 +802,13 @@ function RemindersPage({
 }) {
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('08:00');
+  const [days, setDays] = useState(allDays);
+
+  const toggleDay = (day) => {
+    setDays((current) =>
+      current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort((a, b) => a - b)
+    );
+  };
 
   const addReminder = (event) => {
     event.preventDefault();
@@ -811,11 +823,13 @@ function RemindersPage({
         id: Date.now(),
         label: trimmed,
         time,
+        days: days.length > 0 ? days : allDays,
         enabled: true,
       },
     ]);
 
     setLabel('');
+    setDays(allDays);
   };
 
   const toggleReminder = (id) => {
@@ -955,6 +969,21 @@ function RemindersPage({
           onChange={(event) => setTime(event.target.value)}
           required
         />
+        <fieldset className="day-picker">
+          <legend>Repeat on</legend>
+          <div className="day-picker-row">
+            {dayNames.map((name, index) => (
+              <label key={name} className="day-label">
+                <input
+                  type="checkbox"
+                  checked={days.includes(index)}
+                  onChange={() => toggleDay(index)}
+                />
+                {name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <button type="submit">Add reminder</button>
       </form>
 
@@ -968,6 +997,12 @@ function RemindersPage({
                 <p className="eyebrow">{item.enabled ? 'Enabled' : 'Paused'}</p>
                 <h3>{item.label}</h3>
                 <p className="muted">Time: {item.time}</p>
+                <p className="muted">
+                  Repeats:{' '}
+                  {item.days && item.days.length < 7
+                    ? item.days.map((d) => dayNames[d]).join(', ')
+                    : 'Every day'}
+                </p>
               </div>
               <div className="action-row">
                 <button type="button" className="secondary" onClick={() => toggleReminder(item.id)}>
@@ -1485,7 +1520,12 @@ export default function App() {
       }
 
       setTriggeredReminderKeys((currentKeys) => {
-        const enabledMatches = reminders.filter((item) => item.enabled && item.time === timeKey);
+        const enabledMatches = reminders.filter(
+        (item) =>
+          item.enabled &&
+          item.time === timeKey &&
+          (item.days === undefined || item.days.includes(now.getDay()))
+      );
         const nextKeys = [...currentKeys];
 
         for (const item of enabledMatches) {
