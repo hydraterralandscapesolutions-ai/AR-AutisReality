@@ -39,7 +39,10 @@ const defaultReminderPreferences = {
   dndEnabled: false,
   dndStart: '22:00',
   dndEnd: '07:00',
+  snoozeDuration: 10,
 };
+
+const snoozeDurationOptions = [5, 10, 15, 30];
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -173,6 +176,10 @@ function normalizeReminderPreferences(value) {
       typeof value.dndEnd === 'string'
         ? value.dndEnd
         : defaultReminderPreferences.dndEnd,
+    snoozeDuration:
+      snoozeDurationOptions.includes(Number(value.snoozeDuration))
+        ? Number(value.snoozeDuration)
+        : defaultReminderPreferences.snoozeDuration,
   };
 }
 
@@ -285,7 +292,7 @@ function AppShell({
           </div>
           <div className="action-row">
             <button type="button" className="secondary" onClick={onSnoozeReminderAlert}>
-              Snooze 10 min
+              Snooze {reminderAlert.snoozeDuration} min
             </button>
             <button type="button" className="secondary" onClick={onDismissReminderAlert}>
               Dismiss
@@ -847,6 +854,19 @@ function RemindersPage({
         </button>
       </div>
       <div className="notification-options" aria-label="Reminder alert options">
+        <label htmlFor="snoozeDuration">Snooze duration</label>
+        <select
+          id="snoozeDuration"
+          value={reminderPreferences.snoozeDuration}
+          onChange={(event) =>
+            onUpdateReminderPreferences({ snoozeDuration: Number(event.target.value) })
+          }
+          className="snooze-select"
+        >
+          {snoozeDurationOptions.map((mins) => (
+            <option key={mins} value={mins}>{mins} minutes</option>
+          ))}
+        </select>
         <label>
           <input
             type="checkbox"
@@ -1474,7 +1494,7 @@ export default function App() {
             continue;
           }
           nextKeys.push(firedKey);
-          nextAlert = { id: item.id, label: item.label, time: item.time, firedKey };
+          nextAlert = { id: item.id, label: item.label, time: item.time, firedKey, snoozeDuration: reminderPreferences.snoozeDuration };
           break;
         }
 
@@ -1640,8 +1660,9 @@ export default function App() {
   };
 
   const handleSnoozeReminderAlert = () => {
+    const mins = reminderPreferences.snoozeDuration;
     setReminderAlert(null);
-    setSnoozeUntil(Date.now() + 10 * 60 * 1000);
+    setSnoozeUntil(Date.now() + mins * 60 * 1000);
   };
 
   const handleRequestNotificationPermission = async () => {
