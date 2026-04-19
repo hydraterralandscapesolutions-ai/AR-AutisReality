@@ -33,6 +33,7 @@ const defaultRegulationIndex = 0;
 const defaultCompletionHistory = [];
 const defaultClaimedBadges = [];
 const defaultReminders = [];
+const defaultChildren = [];
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const allDays = [0, 1, 2, 3, 4, 5, 6];
 const defaultReminderPreferences = {
@@ -188,6 +189,19 @@ function normalizeReminderPreferences(value) {
   };
 }
 
+const childColors = ['#7986cb', '#4db6ac', '#f06292', '#ffb74d', '#aed581', '#4fc3f7', '#ff8a65', '#ba68c8'];
+
+function normalizeChildren(value) {
+  if (!Array.isArray(value)) return defaultChildren;
+  return value
+    .filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string')
+    .map((c) => ({
+      id: c.id,
+      name: c.name.trim().slice(0, 60),
+      color: typeof c.color === 'string' ? c.color : childColors[0],
+    }));
+}
+
 function formatLastFired(ts) {
   if (!ts) return null;
   const fired = new Date(ts);
@@ -285,6 +299,7 @@ function AppShell({
               <NavLink to="/regulation">Regulation</NavLink>
               <NavLink to="/reminders">Reminders</NavLink>
               <NavLink to="/achievements">Achievements</NavLink>
+              <NavLink to="/children">Children</NavLink>
               <NavLink to="/profile">Profile</NavLink>
               {role === 'admin' ? <NavLink to="/admin">Admin</NavLink> : null}
             </>
@@ -1403,6 +1418,85 @@ function NotFoundPage() {
   );
 }
 
+function ChildrenPage({ children, onSetChildren }) {
+  const [draft, setDraft] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+
+  const addChild = (event) => {
+    event.preventDefault();
+    const name = draft.trim();
+    if (!name) return;
+    const id = `child-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const color = childColors[children.length % childColors.length];
+    onSetChildren([...children, { id, name, color }]);
+    setDraft('');
+  };
+
+  const removeChild = (id) => onSetChildren(children.filter((c) => c.id !== id));
+
+  const startRename = (child) => { setEditingId(child.id); setEditDraft(child.name); };
+  const cancelRename = () => setEditingId(null);
+  const saveRename = (id) => {
+    const name = editDraft.trim();
+    if (!name) return;
+    onSetChildren(children.map((c) => c.id === id ? { ...c, name } : c));
+    setEditingId(null);
+  };
+
+  return (
+    <section className="single-panel">
+      <p className="eyebrow">Family</p>
+      <h2>Children</h2>
+      <p className="muted">Add each child to keep their routines and progress organised.</p>
+      <form onSubmit={addChild} className="add-child-form">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Child's name"
+          maxLength={60}
+        />
+        <button type="submit" disabled={!draft.trim()}>Add child</button>
+      </form>
+      {children.length === 0 ? (
+        <p className="muted">No children added yet.</p>
+      ) : (
+        <ul className="children-list">
+          {children.map((child) => (
+            <li key={child.id} className="child-card">
+              <span className="child-avatar" style={{ background: child.color }}>
+                {child.name.charAt(0).toUpperCase()}
+              </span>
+              {editingId === child.id ? (
+                <div className="child-rename-row">
+                  <input
+                    type="text"
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    maxLength={60}
+                    autoFocus
+                  />
+                  <button type="button" onClick={() => saveRename(child.id)} disabled={!editDraft.trim()}>Save</button>
+                  <button type="button" className="secondary" onClick={cancelRename}>Cancel</button>
+                </div>
+              ) : (
+                <span className="child-name">{child.name}</span>
+              )}
+              {editingId !== child.id && (
+                <div className="action-row child-actions">
+                  <button type="button" className="secondary" onClick={() => startRename(child)}>Rename</button>
+                  <button type="button" className="secondary" onClick={() => removeChild(child.id)}>Remove</button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ProfilePage({ displayName, onSaveDisplayName }) {
   const [draft, setDraft] = useState(displayName);
   const [saved, setSaved] = useState(false);
@@ -1462,6 +1556,7 @@ export default function App() {
   );
   const [reminderPreferences, setReminderPreferences] = useState(defaultReminderPreferences);
   const [displayName, setDisplayName] = useState('');
+  const [children, setChildren] = useState(defaultChildren);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1525,7 +1620,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name,children')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -1596,6 +1691,7 @@ export default function App() {
       setReminders(normalizeReminders(data.reminders));
       setReminderPreferences(normalizeReminderPreferences(data.reminder_preferences));
       setDisplayName(typeof data.display_name === 'string' ? data.display_name : '');
+      setChildren(normalizeChildren(data.children));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -1623,8 +1719,10 @@ export default function App() {
       reminders,
       reminder_preferences: reminderPreferences,
       display_name: displayName,
+      children,
     });
   }, [
+    children,
     claimedBadges,
     completionHistory,
     dataReady,
@@ -2165,6 +2263,25 @@ export default function App() {
               <ProfilePage
                 displayName={displayName}
                 onSaveDisplayName={setDisplayName}
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/children"
+          element={
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
+            >
+              <ChildrenPage
+                children={children}
+                onSetChildren={setChildren}
               />
             </ProtectedRoute>
           }

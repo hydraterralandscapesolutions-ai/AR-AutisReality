@@ -9,6 +9,7 @@ create table if not exists public.user_app_state (
   reminders jsonb not null default '[]'::jsonb,
   reminder_preferences jsonb not null default '{"soundEnabled": true, "vibrationEnabled": false, "dndEnabled": false, "dndStart": "22:00", "dndEnd": "07:00"}'::jsonb,
   display_name text not null default '',
+  children jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now()
 );
 
