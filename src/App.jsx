@@ -1732,10 +1732,12 @@ function AchievementsPage({
 
 function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, userRole }) {
   const [dashboard, setDashboard] = useState(() => getDashboardState());
+  const [selectedDateRange, setSelectedDateRange] = useState('7d');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    setDashboardFilters({ userRole, dateRange: '7d' });
-  }, [userRole]);
+    setDashboardFilters({ userRole, dateRange: selectedDateRange });
+  }, [selectedDateRange, userRole]);
 
   const buildLocalWidgets = () => {
       const latest = completionHistory[completionHistory.length - 1];
@@ -1859,38 +1861,43 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
   };
 
   const loadDashboard = async () => {
-    const next = await refreshDashboard(async ({ dateRange }) => {
-      const days = parseRangeDays(dateRange);
+    setIsRefreshing(true);
+    try {
+      const next = await refreshDashboard(async ({ dateRange }) => {
+        const days = parseRangeDays(dateRange);
 
-      if (!supabase || !hasSupabaseConfig || userRole !== 'admin') {
-        return buildLocalWidgets();
-      }
+        if (!supabase || !hasSupabaseConfig || userRole !== 'admin') {
+          return buildLocalWidgets();
+        }
 
-      const { data, error } = await supabase.rpc('admin_dashboard_summary', {
-        p_days: days,
+        const { data, error } = await supabase.rpc('admin_dashboard_summary', {
+          p_days: days,
+        });
+
+        if (error) {
+          return [
+            {
+              id: 'admin-metrics-error',
+              title: 'Admin metrics unavailable',
+              value: 'Fallback mode',
+              note: error.message,
+            },
+            ...buildLocalWidgets(),
+          ];
+        }
+
+        return buildAdminWidgets(data);
       });
 
-      if (error) {
-        return [
-          {
-            id: 'admin-metrics-error',
-            title: 'Admin metrics unavailable',
-            value: 'Fallback mode',
-            note: error.message,
-          },
-          ...buildLocalWidgets(),
-        ];
-      }
-
-      return buildAdminWidgets(data);
-    });
-
-    setDashboard(next);
+      setDashboard(next);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
     loadDashboard();
-  }, [completionHistory, regulationIndex, rewardPoints, tasks]);
+  }, [completionHistory, regulationIndex, rewardPoints, selectedDateRange, tasks]);
 
   return (
     <section className="single-panel">
@@ -1901,8 +1908,21 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
         content management, and environment settings.
       </p>
       <div className="action-row">
+        <label className="dashboard-filter" htmlFor="adminDateRange">
+          <span className="muted">Reporting window</span>
+          <select
+            id="adminDateRange"
+            value={selectedDateRange}
+            onChange={(event) => setSelectedDateRange(event.target.value)}
+          >
+            <option value="7d">Last 7 days</option>
+            <option value="14d">Last 14 days</option>
+            <option value="30d">Last 30 days</option>
+          </select>
+        </label>
         <button type="button" onClick={loadDashboard}>Refresh dashboard</button>
       </div>
+      {isRefreshing ? <p className="muted">Refreshing dashboard metrics...</p> : null}
       <div className="analytics-grid" aria-label="Admin dashboard widgets">
         {dashboard.widgets.map((widget) => (
           <article key={widget.id} className="analytics-card">
