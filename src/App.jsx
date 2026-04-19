@@ -1788,6 +1788,10 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
     const avgRewardPoints = Number(summary?.avg_reward_points) || 0;
     const avgCompletionRate = Number(summary?.avg_completion_rate) || 0;
     const activeUsers = Number(summary?.active_users) || 0;
+    const totalChildren = Number(summary?.total_children) || 0;
+    const avgChildrenPerFamily = Number(summary?.avg_children_per_family) || 0;
+    const childScopedReminders = Number(summary?.child_scoped_reminders) || 0;
+    const childGameSessions = Number(summary?.child_game_sessions) || 0;
     const rangeDays = Number(summary?.range_days) || 7;
 
     return [
@@ -1826,6 +1830,30 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
         title: 'Active users',
         value: activeUsers,
         note: `Users with completion history in last ${rangeDays} day(s).`,
+      },
+      {
+        id: 'total-children',
+        title: 'Child profiles',
+        value: totalChildren,
+        note: 'All child profiles configured across parent accounts.',
+      },
+      {
+        id: 'avg-children-per-family',
+        title: 'Avg children per family',
+        value: avgChildrenPerFamily,
+        note: 'Average roster size across stored family records.',
+      },
+      {
+        id: 'child-scoped-reminders',
+        title: 'Child reminders',
+        value: childScopedReminders,
+        note: 'Reminder schedules assigned to a specific child profile.',
+      },
+      {
+        id: 'child-game-sessions',
+        title: 'Child game sessions',
+        value: childGameSessions,
+        note: 'Total sessions recorded in per-child game progress.',
       },
     ];
   };

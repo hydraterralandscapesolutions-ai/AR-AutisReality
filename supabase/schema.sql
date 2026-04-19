@@ -127,6 +127,43 @@ begin
       )::integer as active_users
     from public.user_app_state s
     left join lateral jsonb_array_elements(s.completion_history) as entry(value) on true
+  ),
+  family_counts as (
+    select
+      coalesce(sum(jsonb_array_length(s.children)), 0)::integer as total_children,
+      coalesce(round(avg(jsonb_array_length(s.children))::numeric, 1), 0)::numeric as avg_children_per_family,
+      coalesce(
+        sum(
+          (
+            select count(*)::integer
+            from jsonb_array_elements(s.reminders) as reminder(value)
+            where coalesce(reminder.value ->> 'childId', '') <> ''
+          )
+        ),
+        0
+      )::integer as child_scoped_reminders
+    from public.user_app_state s
+  ),
+  game_counts as (
+    select
+      coalesce(
+        sum(
+          case
+            when jsonb_typeof(game_entry.value -> 'sessions') = 'number'
+              then (game_entry.value ->> 'sessions')::integer
+            else 0
+          end
+        ),
+        0
+      )::integer as child_game_sessions
+    from public.user_app_state s
+    left join lateral jsonb_each(s.game_progress_by_child) as child_progress(child_id, progress) on true
+    left join lateral jsonb_array_elements(
+      case
+        when jsonb_typeof(child_progress.progress) = 'array' then child_progress.progress
+        else '[]'::jsonb
+      end
+    ) as game_entry(value) on true
   )
   select jsonb_build_object(
     'total_users', role_counts.total_users,
@@ -135,10 +172,14 @@ begin
     'avg_reward_points', state_counts.avg_reward_points,
     'avg_completion_rate', state_counts.avg_completion_rate,
     'active_users', state_counts.active_users,
+    'total_children', family_counts.total_children,
+    'avg_children_per_family', family_counts.avg_children_per_family,
+    'child_scoped_reminders', family_counts.child_scoped_reminders,
+    'child_game_sessions', game_counts.child_game_sessions,
     'range_days', range_days
   )
   into result
-  from role_counts, state_counts;
+  from role_counts, state_counts, family_counts, game_counts;
 
   return result;
 end;
