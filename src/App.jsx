@@ -32,6 +32,7 @@ const defaultRewardMessage = 'Great consistency this week.';
 const defaultRegulationIndex = 0;
 const defaultCompletionHistory = [];
 const defaultClaimedBadges = [];
+const defaultReminders = [];
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -88,6 +89,21 @@ function normalizeClaimedBadges(value) {
   return value.filter((entry) => typeof entry === 'string');
 }
 
+function normalizeReminders(value) {
+  if (!Array.isArray(value)) {
+    return defaultReminders;
+  }
+
+  return value
+    .filter((item) => item && typeof item.label === 'string')
+    .map((item, index) => ({
+      id: typeof item.id === 'number' ? item.id : index + 1,
+      label: item.label,
+      time: typeof item.time === 'string' ? item.time : '08:00',
+      enabled: Boolean(item.enabled),
+    }));
+}
+
 function normalizeGameProgress(rows) {
   const map = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -135,6 +151,7 @@ function AppShell({ children, isAuthenticated, isEmailVerified, profileName, rol
               <NavLink to="/games">Games</NavLink>
               <NavLink to="/rewards">Rewards</NavLink>
               <NavLink to="/regulation">Regulation</NavLink>
+              <NavLink to="/reminders">Reminders</NavLink>
               <NavLink to="/achievements">Achievements</NavLink>
               {role === 'admin' ? <NavLink to="/admin">Admin</NavLink> : null}
             </>
@@ -641,6 +658,93 @@ function RegulationPage({ index, setIndex }) {
   );
 }
 
+function RemindersPage({ reminders, setReminders }) {
+  const [label, setLabel] = useState('');
+  const [time, setTime] = useState('08:00');
+
+  const addReminder = (event) => {
+    event.preventDefault();
+    const trimmed = label.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setReminders((current) => [
+      ...current,
+      {
+        id: Date.now(),
+        label: trimmed,
+        time,
+        enabled: true,
+      },
+    ]);
+
+    setLabel('');
+  };
+
+  const toggleReminder = (id) => {
+    setReminders((current) =>
+      current.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item))
+    );
+  };
+
+  const removeReminder = (id) => {
+    setReminders((current) => current.filter((item) => item.id !== id));
+  };
+
+  return (
+    <section className="single-panel">
+      <p className="eyebrow">Reminders</p>
+      <h2>Family notification schedule</h2>
+      <p className="muted">Set routine reminders for transitions, breaks, and emotional check-ins.</p>
+
+      <form className="login-form" onSubmit={addReminder}>
+        <label htmlFor="reminderLabel">Reminder label</label>
+        <input
+          id="reminderLabel"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          placeholder="Evening calm routine"
+          required
+        />
+        <label htmlFor="reminderTime">Time</label>
+        <input
+          id="reminderTime"
+          type="time"
+          value={time}
+          onChange={(event) => setTime(event.target.value)}
+          required
+        />
+        <button type="submit">Add reminder</button>
+      </form>
+
+      <div className="reminder-list" aria-label="Saved reminders">
+        {reminders.length === 0 ? (
+          <p className="muted">No reminders yet. Add one above to start routine notifications.</p>
+        ) : (
+          reminders.map((item) => (
+            <article key={item.id} className="reminder-card">
+              <div>
+                <p className="eyebrow">{item.enabled ? 'Enabled' : 'Paused'}</p>
+                <h3>{item.label}</h3>
+                <p className="muted">Time: {item.time}</p>
+              </div>
+              <div className="action-row">
+                <button type="button" className="secondary" onClick={() => toggleReminder(item.id)}>
+                  {item.enabled ? 'Pause' : 'Enable'}
+                </button>
+                <button type="button" className="secondary" onClick={() => removeReminder(item.id)}>
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
 function AchievementsPage({ completionHistory, gameProgress, rewardPoints, claimedBadges, setClaimedBadges }) {
   const totalGameSessions = gameProgress.reduce((sum, entry) => sum + entry.sessions, 0);
   const averageCompletion =
@@ -934,6 +1038,7 @@ export default function App() {
   const [completionHistory, setCompletionHistory] = useState(defaultCompletionHistory);
   const [gameProgress, setGameProgress] = useState(defaultGameProgress);
   const [claimedBadges, setClaimedBadges] = useState(defaultClaimedBadges);
+  const [reminders, setReminders] = useState(defaultReminders);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -976,6 +1081,7 @@ export default function App() {
       setCompletionHistory(defaultCompletionHistory);
       setGameProgress(defaultGameProgress);
       setClaimedBadges(defaultClaimedBadges);
+      setReminders(defaultReminders);
       setDataReady(false);
       setDataLoading(false);
       return;
@@ -988,7 +1094,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -1021,6 +1127,7 @@ export default function App() {
           reward_message: defaultRewardMessage,
           regulation_index: defaultRegulationIndex,
           completion_history: defaultCompletionHistory,
+          reminders: defaultReminders,
         });
 
         if (!active) {
@@ -1040,6 +1147,7 @@ export default function App() {
         setCompletionHistory(defaultCompletionHistory);
         setGameProgress(normalizeGameProgress(gameData));
         setClaimedBadges(defaultClaimedBadges);
+        setReminders(defaultReminders);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -1052,6 +1160,7 @@ export default function App() {
       setCompletionHistory(normalizeCompletionHistory(data.completion_history));
       setGameProgress(normalizeGameProgress(gameData));
       setClaimedBadges(normalizeClaimedBadges(data.claimed_badges));
+      setReminders(normalizeReminders(data.reminders));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -1076,6 +1185,7 @@ export default function App() {
       regulation_index: regulationIndex,
       completion_history: completionHistory,
       claimed_badges: claimedBadges,
+      reminders,
     });
   }, [
     claimedBadges,
@@ -1083,6 +1193,7 @@ export default function App() {
     dataReady,
     isAuthenticated,
     parentTasks,
+    reminders,
     regulationIndex,
     rewardMessage,
     rewardPoints,
@@ -1430,6 +1541,22 @@ export default function App() {
                 claimedBadges={claimedBadges}
                 setClaimedBadges={setClaimedBadges}
               />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reminders"
+          element={
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
+            >
+              <RemindersPage reminders={reminders} setReminders={setReminders} />
             </ProtectedRoute>
           }
         />
