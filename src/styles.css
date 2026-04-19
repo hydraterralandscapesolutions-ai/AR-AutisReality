@@ -298,6 +298,14 @@ button {
   padding: 14px;
 }
 
+.notification-panel {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+
 @media (max-width: 900px) {
   .topbar,
   .panel-grid,

@@ -133,6 +133,13 @@ function parseRangeDays(dateRange) {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 7;
 }
 
+function getNotificationPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return 'unsupported';
+  }
+  return window.Notification.permission;
+}
+
 function AppShell({
   children,
   isAuthenticated,
@@ -679,7 +686,12 @@ function RegulationPage({ index, setIndex }) {
   );
 }
 
-function RemindersPage({ reminders, setReminders }) {
+function RemindersPage({
+  reminders,
+  setReminders,
+  notificationPermission,
+  onRequestNotificationPermission,
+}) {
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('08:00');
 
@@ -718,6 +730,26 @@ function RemindersPage({ reminders, setReminders }) {
       <p className="eyebrow">Reminders</p>
       <h2>Family notification schedule</h2>
       <p className="muted">Set routine reminders for transitions, breaks, and emotional check-ins.</p>
+      <div className="notification-panel">
+        <p className="muted">
+          Browser notifications:{' '}
+          {notificationPermission === 'granted'
+            ? 'Enabled'
+            : notificationPermission === 'denied'
+              ? 'Blocked in browser settings'
+              : notificationPermission === 'default'
+                ? 'Not enabled yet'
+                : 'Not supported in this browser'}
+        </p>
+        <button
+          type="button"
+          className="secondary"
+          onClick={onRequestNotificationPermission}
+          disabled={notificationPermission === 'granted' || notificationPermission === 'unsupported'}
+        >
+          Enable browser notifications
+        </button>
+      </div>
 
       <form className="login-form" onSubmit={addReminder}>
         <label htmlFor="reminderLabel">Reminder label</label>
@@ -1062,6 +1094,9 @@ export default function App() {
   const [reminders, setReminders] = useState(defaultReminders);
   const [reminderAlert, setReminderAlert] = useState(null);
   const [triggeredReminderKeys, setTriggeredReminderKeys] = useState([]);
+  const [notificationPermission, setNotificationPermission] = useState(() =>
+    getNotificationPermission()
+  );
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1093,6 +1128,10 @@ export default function App() {
       active = false;
       subscription.unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    setNotificationPermission(getNotificationPermission());
   }, []);
 
   useEffect(() => {
@@ -1236,6 +1275,7 @@ export default function App() {
       const minute = String(now.getMinutes()).padStart(2, '0');
       const timeKey = `${hour}:${minute}`;
       const dateKey = now.toISOString().slice(0, 10);
+      let nextAlert = null;
 
       setTriggeredReminderKeys((currentKeys) => {
         const enabledMatches = reminders.filter((item) => item.enabled && item.time === timeKey);
@@ -1247,7 +1287,7 @@ export default function App() {
             continue;
           }
           nextKeys.push(firedKey);
-          setReminderAlert({ id: item.id, label: item.label, time: item.time });
+          nextAlert = { id: item.id, label: item.label, time: item.time, firedKey };
           break;
         }
 
@@ -1257,6 +1297,21 @@ export default function App() {
 
         return nextKeys;
       });
+
+      if (nextAlert) {
+        setReminderAlert(nextAlert);
+
+        if (notificationPermission === 'granted' && typeof window !== 'undefined' && 'Notification' in window) {
+          try {
+            new window.Notification(`Reminder: ${nextAlert.label}`, {
+              body: `Scheduled for ${nextAlert.time}`,
+              tag: nextAlert.firedKey,
+            });
+          } catch {
+            // Ignore browser notification dispatch failures and keep in-app alerts.
+          }
+        }
+      }
     };
 
     checkReminders();
@@ -1265,7 +1320,7 @@ export default function App() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [dataReady, isAuthenticated, reminders]);
+  }, [dataReady, isAuthenticated, notificationPermission, reminders]);
 
   useEffect(() => {
     if (!reminderAlert) {
@@ -1372,6 +1427,16 @@ export default function App() {
 
   const handleDismissReminderAlert = () => {
     setReminderAlert(null);
+  };
+
+  const handleRequestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setNotificationPermission('unsupported');
+      return;
+    }
+
+    const result = await window.Notification.requestPermission();
+    setNotificationPermission(result);
   };
 
   const handleRequestPasswordReset = async (email) => {
@@ -1640,7 +1705,12 @@ export default function App() {
               requireVerified
               isEmailVerified={isEmailVerified}
             >
-              <RemindersPage reminders={reminders} setReminders={setReminders} />
+              <RemindersPage
+                reminders={reminders}
+                setReminders={setReminders}
+                notificationPermission={notificationPermission}
+                onRequestNotificationPermission={handleRequestNotificationPermission}
+              />
             </ProtectedRoute>
           }
         />
