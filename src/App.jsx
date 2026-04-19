@@ -1960,7 +1960,7 @@ function NotFoundPage() {
   );
 }
 
-function ChildrenPage({ children, onSetChildren }) {
+function ChildrenPage({ children, onSetChildren, onRemoveChild }) {
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState('');
@@ -1975,7 +1975,22 @@ function ChildrenPage({ children, onSetChildren }) {
     setDraft('');
   };
 
-  const removeChild = (id) => onSetChildren(children.filter((c) => c.id !== id));
+  const removeChild = (id) => {
+    const confirmed =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm('Remove this child and all child-specific data (tasks, reminders, rewards, progress)?');
+    if (!confirmed) {
+      return;
+    }
+
+    if (typeof onRemoveChild === 'function') {
+      onRemoveChild(id);
+      return;
+    }
+
+    onSetChildren(children.filter((c) => c.id !== id));
+  };
 
   const startRename = (child) => { setEditingId(child.id); setEditDraft(child.name); };
   const cancelRename = () => setEditingId(null);
@@ -2596,6 +2611,44 @@ export default function App() {
     }));
   };
 
+  const handleRemoveChildData = (childId) => {
+    setChildren((current) => current.filter((child) => child.id !== childId));
+    setParentTasks((current) => current.filter((task) => task.childId !== childId));
+    setCompletionHistory((current) => current.filter((entry) => entry.childId !== childId));
+    setReminders((current) => current.filter((item) => item.childId !== childId));
+    setReminderAlert(null);
+
+    setRewardPointsByChild((current) => {
+      const next = { ...current };
+      delete next[childId];
+      return next;
+    });
+
+    setRewardMessageByChild((current) => {
+      const next = { ...current };
+      delete next[childId];
+      return next;
+    });
+
+    setRegulationIndexByChild((current) => {
+      const next = { ...current };
+      delete next[childId];
+      return next;
+    });
+
+    setGameProgressByChild((current) => {
+      const next = { ...current };
+      delete next[childId];
+      return next;
+    });
+
+    setReminderPreferencesByChild((current) => {
+      const next = { ...current };
+      delete next[childId];
+      return next;
+    });
+  };
+
   const handleRequestPasswordReset = async (email) => {
     if (!supabase) {
       return;
@@ -2933,6 +2986,7 @@ export default function App() {
               <ChildrenPage
                 children={children}
                 onSetChildren={setChildren}
+                onRemoveChild={handleRemoveChildData}
               />
             </ProtectedRoute>
           }
