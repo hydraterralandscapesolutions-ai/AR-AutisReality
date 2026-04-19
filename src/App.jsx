@@ -36,6 +36,9 @@ const defaultReminders = [];
 const defaultReminderPreferences = {
   soundEnabled: true,
   vibrationEnabled: false,
+  dndEnabled: false,
+  dndStart: '22:00',
+  dndEnd: '07:00',
 };
 
 const defaultTasks = [
@@ -158,7 +161,36 @@ function normalizeReminderPreferences(value) {
       typeof value.vibrationEnabled === 'boolean'
         ? value.vibrationEnabled
         : defaultReminderPreferences.vibrationEnabled,
+    dndEnabled:
+      typeof value.dndEnabled === 'boolean'
+        ? value.dndEnabled
+        : defaultReminderPreferences.dndEnabled,
+    dndStart:
+      typeof value.dndStart === 'string'
+        ? value.dndStart
+        : defaultReminderPreferences.dndStart,
+    dndEnd:
+      typeof value.dndEnd === 'string'
+        ? value.dndEnd
+        : defaultReminderPreferences.dndEnd,
   };
+}
+
+function isInDndWindow(start, end) {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  // Overnight window (e.g. 22:00 → 07:00)
+  if (startMinutes > endMinutes) {
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  }
+
+  // Same-day window (e.g. 13:00 → 14:00)
+  return currentMinutes >= startMinutes && currentMinutes < endMinutes;
 }
 
 function playReminderTone() {
@@ -837,6 +869,49 @@ function RemindersPage({
         </label>
       </div>
 
+      <div className="dnd-panel">
+        <label className="dnd-toggle">
+          <input
+            type="checkbox"
+            checked={reminderPreferences.dndEnabled}
+            onChange={(event) =>
+              onUpdateReminderPreferences({ dndEnabled: event.target.checked })
+            }
+          />
+          <span>Enable Do Not Disturb window</span>
+        </label>
+        {reminderPreferences.dndEnabled ? (
+          <div className="dnd-times">
+            <label htmlFor="dndStart">
+              Start
+              <input
+                id="dndStart"
+                type="time"
+                value={reminderPreferences.dndStart}
+                onChange={(event) =>
+                  onUpdateReminderPreferences({ dndStart: event.target.value })
+                }
+              />
+            </label>
+            <label htmlFor="dndEnd">
+              End
+              <input
+                id="dndEnd"
+                type="time"
+                value={reminderPreferences.dndEnd}
+                onChange={(event) =>
+                  onUpdateReminderPreferences({ dndEnd: event.target.value })
+                }
+              />
+            </label>
+            <p className="muted dnd-note">
+              Reminders between {reminderPreferences.dndStart} and {reminderPreferences.dndEnd} will
+              be silenced. Overnight ranges (e.g. 22:00 – 07:00) are supported.
+            </p>
+          </div>
+        ) : null}
+      </div>
+
       <form className="login-form" onSubmit={addReminder}>
         <label htmlFor="reminderLabel">Reminder label</label>
         <input
@@ -1370,6 +1445,13 @@ export default function App() {
       const dateKey = now.toISOString().slice(0, 10);
       let nextAlert = null;
 
+      if (
+        reminderPreferences.dndEnabled &&
+        isInDndWindow(reminderPreferences.dndStart, reminderPreferences.dndEnd)
+      ) {
+        return;
+      }
+
       setTriggeredReminderKeys((currentKeys) => {
         const enabledMatches = reminders.filter((item) => item.enabled && item.time === timeKey);
         const nextKeys = [...currentKeys];
@@ -1429,6 +1511,9 @@ export default function App() {
     dataReady,
     isAuthenticated,
     notificationPermission,
+    reminderPreferences.dndEnabled,
+    reminderPreferences.dndEnd,
+    reminderPreferences.dndStart,
     reminderPreferences.soundEnabled,
     reminderPreferences.vibrationEnabled,
     reminders,
