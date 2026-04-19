@@ -17,6 +17,7 @@ Role notes:
 - Admin route access requires role `admin`.
 - Parent checklist, rewards, and regulation data are stored per user in `public.user_app_state`.
 - Parent completion history analytics are stored per user in `public.user_app_state.completion_history`.
+- Claimed achievements are stored per user in `public.user_app_state.claimed_badges`.
 - Admin dashboard can load multi-user aggregates via `public.admin_dashboard_summary()`.
 - Game progress is stored per user in `public.user_game_progress`.
 

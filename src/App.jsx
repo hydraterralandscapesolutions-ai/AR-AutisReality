@@ -31,6 +31,7 @@ const defaultRewardPoints = 12;
 const defaultRewardMessage = 'Great consistency this week.';
 const defaultRegulationIndex = 0;
 const defaultCompletionHistory = [];
+const defaultClaimedBadges = [];
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -77,6 +78,14 @@ function normalizeCompletionHistory(value) {
       total: Number.isFinite(entry.total) ? entry.total : 0,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeClaimedBadges(value) {
+  if (!Array.isArray(value)) {
+    return defaultClaimedBadges;
+  }
+
+  return value.filter((entry) => typeof entry === 'string');
 }
 
 function normalizeGameProgress(rows) {
@@ -126,6 +135,7 @@ function AppShell({ children, isAuthenticated, isEmailVerified, profileName, rol
               <NavLink to="/games">Games</NavLink>
               <NavLink to="/rewards">Rewards</NavLink>
               <NavLink to="/regulation">Regulation</NavLink>
+              <NavLink to="/achievements">Achievements</NavLink>
               {role === 'admin' ? <NavLink to="/admin">Admin</NavLink> : null}
             </>
           ) : (
@@ -631,6 +641,102 @@ function RegulationPage({ index, setIndex }) {
   );
 }
 
+function AchievementsPage({ completionHistory, gameProgress, rewardPoints, claimedBadges, setClaimedBadges }) {
+  const totalGameSessions = gameProgress.reduce((sum, entry) => sum + entry.sessions, 0);
+  const averageCompletion =
+    completionHistory.length > 0
+      ? Math.round(
+          completionHistory.reduce((sum, entry) => sum + entry.completionRate, 0) /
+            completionHistory.length
+        )
+      : 0;
+
+  let streak = 0;
+  for (let i = completionHistory.length - 1; i >= 0; i -= 1) {
+    if (completionHistory[i].completionRate >= 80) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
+
+  const achievements = [
+    {
+      id: 'first-progress-log',
+      title: 'First Progress Log',
+      description: 'Record your first daily completion snapshot.',
+      unlocked: completionHistory.length >= 1,
+    },
+    {
+      id: 'streak-3',
+      title: '3-Day Consistency',
+      description: 'Maintain a 3-day streak at 80%+ completion.',
+      unlocked: streak >= 3,
+    },
+    {
+      id: 'game-starter',
+      title: 'Game Starter',
+      description: 'Play 5 total game sessions.',
+      unlocked: totalGameSessions >= 5,
+    },
+    {
+      id: 'points-builder',
+      title: 'Points Builder',
+      description: 'Reach 30 reward points.',
+      unlocked: rewardPoints >= 30,
+    },
+    {
+      id: 'steady-progress',
+      title: 'Steady Progress',
+      description: 'Reach 75% average completion across history.',
+      unlocked: averageCompletion >= 75,
+    },
+  ];
+
+  const claimBadge = (badgeId) => {
+    setClaimedBadges((current) => {
+      if (current.includes(badgeId)) {
+        return current;
+      }
+      return [...current, badgeId];
+    });
+  };
+
+  const claimedCount = claimedBadges.length;
+
+  return (
+    <section className="single-panel">
+      <p className="eyebrow">Achievements</p>
+      <h2>Milestones and family wins</h2>
+      <p className="muted">Track unlocked milestones and claim badges as progress grows.</p>
+      <p className="metric">Claimed badges: {claimedCount}</p>
+
+      <div className="achievement-grid">
+        {achievements.map((badge) => {
+          const isClaimed = claimedBadges.includes(badge.id);
+          return (
+            <article key={badge.id} className="achievement-card">
+              <p className="eyebrow">{badge.unlocked ? 'Unlocked' : 'Locked'}</p>
+              <h3>{badge.title}</h3>
+              <p className="muted">{badge.description}</p>
+              <div className="action-row">
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!badge.unlocked || isClaimed}
+                  onClick={() => claimBadge(badge.id)}
+                >
+                  {isClaimed ? 'Claimed' : badge.unlocked ? 'Claim badge' : 'Not unlocked'}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, userRole }) {
   const [dashboard, setDashboard] = useState(() => getDashboardState());
 
@@ -827,6 +933,7 @@ export default function App() {
   const [regulationIndex, setRegulationIndex] = useState(defaultRegulationIndex);
   const [completionHistory, setCompletionHistory] = useState(defaultCompletionHistory);
   const [gameProgress, setGameProgress] = useState(defaultGameProgress);
+  const [claimedBadges, setClaimedBadges] = useState(defaultClaimedBadges);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -868,6 +975,7 @@ export default function App() {
       setRegulationIndex(defaultRegulationIndex);
       setCompletionHistory(defaultCompletionHistory);
       setGameProgress(defaultGameProgress);
+      setClaimedBadges(defaultClaimedBadges);
       setDataReady(false);
       setDataLoading(false);
       return;
@@ -880,7 +988,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -931,6 +1039,7 @@ export default function App() {
         setRegulationIndex(defaultRegulationIndex);
         setCompletionHistory(defaultCompletionHistory);
         setGameProgress(normalizeGameProgress(gameData));
+        setClaimedBadges(defaultClaimedBadges);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -942,6 +1051,7 @@ export default function App() {
       setRegulationIndex(normalizeRegulationIndex(data.regulation_index));
       setCompletionHistory(normalizeCompletionHistory(data.completion_history));
       setGameProgress(normalizeGameProgress(gameData));
+      setClaimedBadges(normalizeClaimedBadges(data.claimed_badges));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -965,8 +1075,10 @@ export default function App() {
       reward_message: rewardMessage,
       regulation_index: regulationIndex,
       completion_history: completionHistory,
+      claimed_badges: claimedBadges,
     });
   }, [
+    claimedBadges,
     completionHistory,
     dataReady,
     isAuthenticated,
@@ -1296,6 +1408,28 @@ export default function App() {
               isEmailVerified={isEmailVerified}
             >
               <RegulationPage index={regulationIndex} setIndex={setRegulationIndex} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/achievements"
+          element={
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
+            >
+              <AchievementsPage
+                completionHistory={completionHistory}
+                gameProgress={gameProgress}
+                rewardPoints={rewardPoints}
+                claimedBadges={claimedBadges}
+                setClaimedBadges={setClaimedBadges}
+              />
             </ProtectedRoute>
           }
         />

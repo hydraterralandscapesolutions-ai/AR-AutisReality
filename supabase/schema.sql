@@ -5,6 +5,7 @@ create table if not exists public.user_app_state (
   reward_message text not null default 'Great consistency this week.',
   regulation_index integer not null default 0,
   completion_history jsonb not null default '[]'::jsonb,
+  claimed_badges jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now()
 );
 

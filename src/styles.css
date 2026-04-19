@@ -254,6 +254,20 @@ button {
   background: linear-gradient(90deg, #1d6b57 0%, #3aa887 100%);
 }
 
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.achievement-card {
+  border-radius: 16px;
+  border: 1px solid rgba(22, 48, 41, 0.12);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 14px;
+}
+
 @media (max-width: 900px) {
   .topbar,
   .panel-grid,
@@ -298,6 +312,10 @@ button {
   }
 
   .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-grid {
     grid-template-columns: 1fr;
   }
 }
