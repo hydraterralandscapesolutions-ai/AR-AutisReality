@@ -71,6 +71,7 @@ function normalizeTasks(value) {
       id: typeof task.id === 'number' ? task.id : index + 1,
       label: task.label,
       done: Boolean(task.done),
+      childId: typeof task.childId === 'string' ? task.childId : undefined,
     }));
 }
 
@@ -90,6 +91,7 @@ function normalizeCompletionHistory(value) {
       completionRate: Number.isFinite(entry.completionRate) ? entry.completionRate : 0,
       completed: Number.isFinite(entry.completed) ? entry.completed : 0,
       total: Number.isFinite(entry.total) ? entry.total : 0,
+      childId: typeof entry.childId === 'string' ? entry.childId : undefined,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -620,7 +622,50 @@ function HomePage() {
   );
 }
 
-function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory }) {
+function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory, children }) {
+  const defaultChildId = children.length > 0 ? children[0].id : '';
+  const [selectedChildId, setSelectedChildId] = useState(defaultChildId);
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setSelectedChildId('');
+      return;
+    }
+
+    const exists = children.some((child) => child.id === selectedChildId);
+    if (!exists) {
+      setSelectedChildId(children[0].id);
+    }
+  }, [children, selectedChildId]);
+
+  useEffect(() => {
+    if (!selectedChildId) {
+      return;
+    }
+
+    setTasks((current) => {
+      const hasChildTasks = current.some((task) => task.childId === selectedChildId);
+      if (hasChildTasks) {
+        return current;
+      }
+
+      const seeded = defaultTasks.map((task, index) => ({
+        ...task,
+        id: Date.now() + index,
+        done: false,
+        childId: selectedChildId,
+      }));
+      return [...current, ...seeded];
+    });
+  }, [selectedChildId, setTasks]);
+
+  const scopedTasks = selectedChildId
+    ? tasks.filter((task) => task.childId === selectedChildId)
+    : tasks.filter((task) => !task.childId);
+
+  const scopedHistory = completionHistory.filter((entry) =>
+    selectedChildId ? entry.childId === selectedChildId : !entry.childId
+  );
 
   const toggleTask = (id) => {
     setTasks((current) =>
@@ -628,8 +673,9 @@ function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory 
     );
   };
 
-  const completed = tasks.filter((task) => task.done).length;
-  const completionRate = Math.round((completed / tasks.length) * 100);
+  const total = scopedTasks.length;
+  const completed = scopedTasks.filter((task) => task.done).length;
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const recordTodayProgress = () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -637,16 +683,20 @@ function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory 
       date: today,
       completionRate,
       completed,
-      total: tasks.length,
+      total,
+      childId: selectedChildId || undefined,
     };
 
     setCompletionHistory((current) => {
-      const filtered = current.filter((entry) => entry.date !== today);
+      const filtered = current.filter(
+        (entry) =>
+          !(entry.date === today && (selectedChildId ? entry.childId === selectedChildId : !entry.childId))
+      );
       return [...filtered, snapshot].sort((a, b) => a.date.localeCompare(b.date));
     });
   };
 
-  const recentHistory = completionHistory.slice(-7);
+  const recentHistory = scopedHistory.slice(-7);
   const bestRate = recentHistory.reduce((max, entry) => Math.max(max, entry.completionRate), 0);
   const averageRate =
     recentHistory.length > 0
@@ -656,8 +706,8 @@ function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory 
       : completionRate;
 
   let streak = 0;
-  for (let i = completionHistory.length - 1; i >= 0; i -= 1) {
-    if (completionHistory[i].completionRate >= 80) {
+  for (let i = scopedHistory.length - 1; i >= 0; i -= 1) {
+    if (scopedHistory[i].completionRate >= 80) {
       streak += 1;
     } else {
       break;
@@ -669,24 +719,46 @@ function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory 
       <p className="eyebrow">Parent Hub</p>
       <h2>Daily support plan</h2>
       <p className="muted">Track routines that reduce uncertainty and improve transitions.</p>
-      <p className="metric">Completed today: {completed} / {tasks.length}</p>
+      {children.length > 0 && (
+        <div className="child-selector" role="tablist" aria-label="Select child">
+          {children.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              className={selectedChildId === child.id ? '' : 'secondary'}
+              onClick={() => setSelectedChildId(child.id)}
+              role="tab"
+              aria-selected={selectedChildId === child.id}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="metric">Completed today: {completed} / {total}</p>
       <p className="muted">Completion rate: {completionRate}%</p>
       <div className="action-row">
-        <button type="button" onClick={recordTodayProgress}>Record today progress</button>
+        <button type="button" onClick={recordTodayProgress} disabled={total === 0}>
+          Record today progress
+        </button>
       </div>
       <ul className="checklist">
-        {tasks.map((task) => (
-          <li key={task.id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={task.done}
-                onChange={() => toggleTask(task.id)}
-              />
-              <span>{task.label}</span>
-            </label>
-          </li>
-        ))}
+        {scopedTasks.length === 0 ? (
+          <li className="muted">No tasks for this child yet.</li>
+        ) : (
+          scopedTasks.map((task) => (
+            <li key={task.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={task.done}
+                  onChange={() => toggleTask(task.id)}
+                />
+                <span>{task.label}</span>
+              </label>
+            </li>
+          ))
+        )}
       </ul>
       <section className="analytics-block" aria-label="Parent analytics">
         <h3>Weekly analytics</h3>
@@ -1605,6 +1677,8 @@ export default function App() {
       setClaimedBadges(defaultClaimedBadges);
       setReminders(defaultReminders);
       setReminderPreferences(defaultReminderPreferences);
+      setDisplayName('');
+      setChildren(defaultChildren);
       setReminderAlert(null);
       setTriggeredReminderKeys([]);
       setSnoozeUntil(null);
@@ -1676,6 +1750,8 @@ export default function App() {
         setClaimedBadges(defaultClaimedBadges);
         setReminders(defaultReminders);
         setReminderPreferences(defaultReminderPreferences);
+        setDisplayName('');
+        setChildren(defaultChildren);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -2147,6 +2223,7 @@ export default function App() {
                 setTasks={setParentTasks}
                 completionHistory={completionHistory}
                 setCompletionHistory={setCompletionHistory}
+                children={children}
               />
             </ProtectedRoute>
           }
