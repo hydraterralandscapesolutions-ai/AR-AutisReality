@@ -41,8 +41,9 @@ describe('dashboard state', () => {
     const state = await refreshDashboard(fetchWidgets);
 
     expect(fetchWidgets).toHaveBeenCalledWith({ dateRange: '14d', userRole: 'all' });
-    expect(state.loading).toBe(false);
+    expect(state.loading).toBe(true);
     expect(state.widgets).toEqual([{ id: 'a', filters: { dateRange: '14d', userRole: 'all' } }]);
+    expect(getDashboardState().loading).toBe(false);
   });
 
   it('refreshDashboard resets loading when the fetcher throws', async () => {
