@@ -72,6 +72,11 @@ function normalizeCompletionHistory(value) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function parseRangeDays(dateRange) {
+  const numeric = Number.parseInt(String(dateRange || '').replace(/[^0-9]/g, ''), 10);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 7;
+}
+
 function AppShell({ children, isAuthenticated, isEmailVerified, profileName, role, onSignOut }) {
   return (
     <div className="app-shell">
@@ -578,8 +583,7 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
     setDashboardFilters({ userRole, dateRange: '7d' });
   }, [userRole]);
 
-  const loadDashboard = async () => {
-    const next = await refreshDashboard(async () => {
+  const buildLocalWidgets = () => {
       const latest = completionHistory[completionHistory.length - 1];
       const averageRate =
         completionHistory.length > 0
@@ -604,7 +608,7 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
         },
         {
           id: 'avg-completion',
-          title: 'Average completion',
+          title: 'Average completion (local)',
           value: `${averageRate}%`,
           note: `${completionHistory.length} tracked day(s) in history.`,
         },
@@ -621,6 +625,82 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
           note: 'Index of the selected regulation strategy in toolkit.',
         },
       ];
+  };
+
+  const buildAdminWidgets = (summary) => {
+    const totalUsers = Number(summary?.total_users) || 0;
+    const adminUsers = Number(summary?.admin_users) || 0;
+    const parentUsers = Number(summary?.parent_users) || 0;
+    const avgRewardPoints = Number(summary?.avg_reward_points) || 0;
+    const avgCompletionRate = Number(summary?.avg_completion_rate) || 0;
+    const activeUsers = Number(summary?.active_users) || 0;
+    const rangeDays = Number(summary?.range_days) || 7;
+
+    return [
+      {
+        id: 'total-users',
+        title: 'Total users',
+        value: totalUsers,
+        note: 'All accounts with auth access in this environment.',
+      },
+      {
+        id: 'parent-users',
+        title: 'Parent users',
+        value: parentUsers,
+        note: 'Accounts with parent role metadata.',
+      },
+      {
+        id: 'admin-users',
+        title: 'Admin users',
+        value: adminUsers,
+        note: 'Accounts with admin role metadata.',
+      },
+      {
+        id: 'avg-reward-points',
+        title: 'Avg reward points',
+        value: avgRewardPoints,
+        note: 'Average current reward balance across users.',
+      },
+      {
+        id: 'avg-completion-rate',
+        title: 'Avg completion rate',
+        value: `${avgCompletionRate}%`,
+        note: 'Average completion from recorded history entries.',
+      },
+      {
+        id: 'active-users',
+        title: 'Active users',
+        value: activeUsers,
+        note: `Users with completion history in last ${rangeDays} day(s).`,
+      },
+    ];
+  };
+
+  const loadDashboard = async () => {
+    const next = await refreshDashboard(async ({ dateRange }) => {
+      const days = parseRangeDays(dateRange);
+
+      if (!supabase || !hasSupabaseConfig || userRole !== 'admin') {
+        return buildLocalWidgets();
+      }
+
+      const { data, error } = await supabase.rpc('admin_dashboard_summary', {
+        p_days: days,
+      });
+
+      if (error) {
+        return [
+          {
+            id: 'admin-metrics-error',
+            title: 'Admin metrics unavailable',
+            value: 'Fallback mode',
+            note: error.message,
+          },
+          ...buildLocalWidgets(),
+        ];
+      }
+
+      return buildAdminWidgets(data);
     });
 
     setDashboard(next);

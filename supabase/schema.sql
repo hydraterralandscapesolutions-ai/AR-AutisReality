@@ -45,3 +45,57 @@ on public.user_app_state
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+create or replace function public.admin_dashboard_summary(p_days integer default 7)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  range_days integer := greatest(1, coalesce(p_days, 7));
+  result jsonb;
+begin
+  if coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') <> 'admin' then
+    raise exception 'Admin role required for dashboard summary';
+  end if;
+
+  with role_counts as (
+    select
+      count(*)::integer as total_users,
+      count(*) filter (
+        where coalesce(raw_user_meta_data ->> 'role', 'parent') = 'admin'
+      )::integer as admin_users,
+      count(*) filter (
+        where coalesce(raw_user_meta_data ->> 'role', 'parent') = 'parent'
+      )::integer as parent_users
+    from auth.users
+  ),
+  state_counts as (
+    select
+      coalesce(round(avg(reward_points)::numeric, 1), 0)::numeric as avg_reward_points,
+      coalesce(round(avg((entry.value ->> 'completionRate')::numeric), 1), 0)::numeric as avg_completion_rate,
+      count(distinct s.user_id) filter (
+        where (entry.value ->> 'date')::date >= current_date - (range_days - 1)
+      )::integer as active_users
+    from public.user_app_state s
+    left join lateral jsonb_array_elements(s.completion_history) as entry(value) on true
+  )
+  select jsonb_build_object(
+    'total_users', role_counts.total_users,
+    'admin_users', role_counts.admin_users,
+    'parent_users', role_counts.parent_users,
+    'avg_reward_points', state_counts.avg_reward_points,
+    'avg_completion_rate', state_counts.avg_completion_rate,
+    'active_users', state_counts.active_users,
+    'range_days', range_days
+  )
+  into result
+  from role_counts, state_counts;
+
+  return result;
+end;
+$$;
+
+revoke all on function public.admin_dashboard_summary(integer) from public;
+grant execute on function public.admin_dashboard_summary(integer) to authenticated;

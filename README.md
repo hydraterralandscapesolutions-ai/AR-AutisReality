@@ -17,11 +17,15 @@ Role notes:
 - Admin route access requires role `admin`.
 - Parent checklist, rewards, and regulation data are stored per user in `public.user_app_state`.
 - Parent completion history analytics are stored per user in `public.user_app_state.completion_history`.
+- Admin dashboard can load multi-user aggregates via `public.admin_dashboard_summary()`.
 
 Password and verification notes:
 - Verification is required before accessing protected routes.
 - Login includes resend-verification and forgot-password actions.
 - Password reset completes on the `/reset-password` route from the email link.
+
+Schema update note:
+- Re-run `supabase/schema.sql` whenever new functions or columns are added (including admin aggregate RPC updates).
 
 ## Deployment (GitHub Pages)
 
