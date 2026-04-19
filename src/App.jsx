@@ -15,10 +15,9 @@ const regulationTools = [
   'Body Tension Scan',
 ];
 
-const parentTasksKey = 'ar-autis-parent-tasks';
-const rewardPointsKey = 'ar-autis-reward-points';
-const rewardMessageKey = 'ar-autis-reward-message';
-const regulationIndexKey = 'ar-autis-regulation-index';
+const defaultRewardPoints = 12;
+const defaultRewardMessage = 'Great consistency this week.';
+const defaultRegulationIndex = 0;
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -26,30 +25,25 @@ const defaultTasks = [
   { id: 3, label: 'Evening calm routine scheduled', done: false },
 ];
 
-function loadJsonState(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) {
-      return fallback;
-    }
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
-function loadNumberState(key, fallback) {
-  const value = Number(localStorage.getItem(key));
-  return Number.isFinite(value) ? value : fallback;
-}
-
-function loadStringState(key, fallback) {
-  const value = localStorage.getItem(key);
-  return value ?? fallback;
-}
-
 function deriveRole(user) {
   return user?.user_metadata?.role === 'admin' ? 'admin' : 'parent';
+}
+
+function normalizeTasks(value) {
+  if (!Array.isArray(value)) {
+    return defaultTasks;
+  }
+  return value
+    .filter((task) => task && typeof task.label === 'string')
+    .map((task, index) => ({
+      id: typeof task.id === 'number' ? task.id : index + 1,
+      label: task.label,
+      done: Boolean(task.done),
+    }));
+}
+
+function normalizeRegulationIndex(value) {
+  return value >= 0 && value < regulationTools.length ? value : defaultRegulationIndex;
 }
 
 function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
@@ -92,14 +86,14 @@ function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
   );
 }
 
-function ProtectedRoute({ isAuthenticated, authLoading, role, allowedRoles, children }) {
+function ProtectedRoute({ isAuthenticated, authLoading, dataLoading, role, allowedRoles, children }) {
   const location = useLocation();
 
-  if (authLoading) {
+  if (authLoading || dataLoading) {
     return (
       <section className="single-panel">
         <p className="eyebrow">Loading</p>
-        <h2>Checking your session...</h2>
+        <h2>Checking your session and loading your data...</h2>
       </section>
     );
   }
@@ -246,12 +240,7 @@ function HomePage() {
   );
 }
 
-function ParentsPage() {
-  const [tasks, setTasks] = useState(() => loadJsonState(parentTasksKey, defaultTasks));
-
-  useEffect(() => {
-    localStorage.setItem(parentTasksKey, JSON.stringify(tasks));
-  }, [tasks]);
+function ParentsPage({ tasks, setTasks }) {
 
   const toggleTask = (id) => {
     setTasks((current) =>
@@ -304,19 +293,7 @@ function GamesPage() {
   );
 }
 
-function RewardsPage() {
-  const [points, setPoints] = useState(() => loadNumberState(rewardPointsKey, 12));
-  const [message, setMessage] = useState(() =>
-    loadStringState(rewardMessageKey, 'Great consistency this week.')
-  );
-
-  useEffect(() => {
-    localStorage.setItem(rewardPointsKey, String(points));
-  }, [points]);
-
-  useEffect(() => {
-    localStorage.setItem(rewardMessageKey, message);
-  }, [message]);
+function RewardsPage({ points, setPoints, message, setMessage }) {
 
   const awardPoints = () => {
     setPoints((value) => value + 2);
@@ -346,15 +323,7 @@ function RewardsPage() {
   );
 }
 
-function RegulationPage() {
-  const [index, setIndex] = useState(() => {
-    const savedIndex = loadNumberState(regulationIndexKey, 0);
-    return savedIndex >= 0 && savedIndex < regulationTools.length ? savedIndex : 0;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(regulationIndexKey, String(index));
-  }, [index]);
+function RegulationPage({ index, setIndex }) {
 
   const nextTool = () => {
     setIndex((value) => (value + 1) % regulationTools.length);
@@ -416,9 +385,15 @@ function NotFoundPage() {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataReady, setDataReady] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authInfo, setAuthInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [parentTasks, setParentTasks] = useState(defaultTasks);
+  const [rewardPoints, setRewardPoints] = useState(defaultRewardPoints);
+  const [rewardMessage, setRewardMessage] = useState(defaultRewardMessage);
+  const [regulationIndex, setRegulationIndex] = useState(defaultRegulationIndex);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -448,6 +423,103 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !supabase) {
+      setParentTasks(defaultTasks);
+      setRewardPoints(defaultRewardPoints);
+      setRewardMessage(defaultRewardMessage);
+      setRegulationIndex(defaultRegulationIndex);
+      setDataReady(false);
+      setDataLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    const loadData = async () => {
+      setDataLoading(true);
+
+      const { data, error } = await supabase
+        .from('user_app_state')
+        .select('parent_tasks,reward_points,reward_message,regulation_index')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!active) {
+        return;
+      }
+
+      if (error) {
+        setAuthError(error.message);
+        setDataLoading(false);
+        return;
+      }
+
+      if (!data) {
+        const { error: insertError } = await supabase.from('user_app_state').upsert({
+          user_id: user.id,
+          parent_tasks: defaultTasks,
+          reward_points: defaultRewardPoints,
+          reward_message: defaultRewardMessage,
+          regulation_index: defaultRegulationIndex,
+        });
+
+        if (!active) {
+          return;
+        }
+
+        if (insertError) {
+          setAuthError(insertError.message);
+          setDataLoading(false);
+          return;
+        }
+
+        setParentTasks(defaultTasks);
+        setRewardPoints(defaultRewardPoints);
+        setRewardMessage(defaultRewardMessage);
+        setRegulationIndex(defaultRegulationIndex);
+        setDataReady(true);
+        setDataLoading(false);
+        return;
+      }
+
+      setParentTasks(normalizeTasks(data.parent_tasks));
+      setRewardPoints(Number.isFinite(data.reward_points) ? data.reward_points : defaultRewardPoints);
+      setRewardMessage(typeof data.reward_message === 'string' ? data.reward_message : defaultRewardMessage);
+      setRegulationIndex(normalizeRegulationIndex(data.regulation_index));
+      setDataReady(true);
+      setDataLoading(false);
+    };
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !dataReady || !supabase) {
+      return;
+    }
+
+    supabase.from('user_app_state').upsert({
+      user_id: user.id,
+      parent_tasks: parentTasks,
+      reward_points: rewardPoints,
+      reward_message: rewardMessage,
+      regulation_index: regulationIndex,
+    });
+  }, [
+    dataReady,
+    isAuthenticated,
+    parentTasks,
+    regulationIndex,
+    rewardMessage,
+    rewardPoints,
+    user?.id,
+  ]);
 
   const handleSignIn = async ({ email, password }) => {
     if (!supabase) {
@@ -539,7 +611,12 @@ export default function App() {
         <Route
           path="/"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role}>
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+            >
               <HomePage />
             </ProtectedRoute>
           }
@@ -547,15 +624,26 @@ export default function App() {
         <Route
           path="/parents"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['parent', 'admin']}>
-              <ParentsPage />
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+            >
+              <ParentsPage tasks={parentTasks} setTasks={setParentTasks} />
             </ProtectedRoute>
           }
         />
         <Route
           path="/games"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role}>
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+            >
               <GamesPage />
             </ProtectedRoute>
           }
@@ -563,23 +651,46 @@ export default function App() {
         <Route
           path="/rewards"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['parent', 'admin']}>
-              <RewardsPage />
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+            >
+              <RewardsPage
+                points={rewardPoints}
+                setPoints={setRewardPoints}
+                message={rewardMessage}
+                setMessage={setRewardMessage}
+              />
             </ProtectedRoute>
           }
         />
         <Route
           path="/regulation"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['parent', 'admin']}>
-              <RegulationPage />
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+            >
+              <RegulationPage index={regulationIndex} setIndex={setRegulationIndex} />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['admin']}>
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['admin']}
+            >
               <AdminPage />
             </ProtectedRoute>
           }
@@ -587,7 +698,12 @@ export default function App() {
         <Route
           path="*"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role}>
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+            >
               <NotFoundPage />
             </ProtectedRoute>
           }
