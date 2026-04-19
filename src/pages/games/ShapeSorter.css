@@ -1,0 +1,100 @@
+.ss-card {
+  padding: 2rem;
+  text-align: center;
+}
+
+.ss-instructions {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.ss-pieces {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  min-height: 80px;
+  margin-bottom: 2rem;
+  padding: 0.75rem;
+  background: #f8f9ff;
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+}
+
+.ss-piece {
+  cursor: grab;
+  border-radius: 8px;
+  padding: 0.5rem;
+  transition: transform 0.15s, opacity 0.15s;
+  background: white;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ss-piece:hover {
+  transform: scale(1.1) translateY(-4px);
+}
+
+.ss-piece:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.ss-piece--dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.ss-done-msg {
+  color: var(--success);
+  font-weight: 700;
+  font-size: 1.1rem;
+  align-self: center;
+}
+
+.ss-slots {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.ss-slot {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.ss-slot--hover {
+  background: #eef0ff;
+  border-color: var(--primary);
+  transform: scale(1.08);
+}
+
+.ss-slot--correct {
+  background: #d1fae5;
+  border-color: var(--success);
+  border-style: solid;
+}
+
+.ss-slot--wrong {
+  background: #ffe4e6;
+  border-color: var(--accent);
+}
+
+.ss-hint {
+  font-size: 0.85rem;
+  color: var(--primary);
+  font-weight: 600;
+  margin-top: 0.5rem;
+}

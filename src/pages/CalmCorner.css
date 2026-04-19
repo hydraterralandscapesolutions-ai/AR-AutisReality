@@ -1,0 +1,179 @@
+.calm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.calm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.calm-card--wide {
+  grid-column: 1 / -1;
+}
+
+.calm-card__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.calm-card__desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Breathing circle */
+.breath-circle-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem 0;
+}
+
+.breath-circle {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: #eef0ff;
+  border: 4px solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.5s ease, background 0.5s ease, border-color 0.5s ease;
+  gap: 0.25rem;
+}
+
+.breath-circle--inhale {
+  transform: scale(1.3);
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.breath-circle--hold {
+  transform: scale(1.3);
+  background: #ede9fe;
+  border-color: #8b5cf6;
+}
+
+.breath-circle--exhale {
+  transform: scale(0.85);
+  background: #d1fae5;
+  border-color: #22c55e;
+}
+
+.breath-circle__label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.breath-circle__count {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.breath-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.breath-guide {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Mood grid */
+.mood-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.mood-btn {
+  background: var(--mood-bg, #f8f9ff);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 0.6rem 0.4rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  transition: transform 0.15s, border-color 0.15s;
+  font-family: var(--font);
+}
+
+.mood-btn:hover {
+  transform: scale(1.06);
+  border-color: var(--primary);
+}
+
+.mood-btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.mood-btn--selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(91,106,245,0.2);
+}
+
+.mood-btn__emoji {
+  font-size: 1.6rem;
+}
+
+.mood-btn__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mood-log {
+  background: #f8f9ff;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+
+.mood-log__title {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: var(--text-muted);
+}
+
+.mood-log ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mood-log__time {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Calming tip */
+.calm-tip {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-left: 4px solid var(--success);
+  border-radius: 0 12px 12px 0;
+  padding: 1rem 1.25rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .calm-card--wide {
+    grid-column: auto;
+  }
+}

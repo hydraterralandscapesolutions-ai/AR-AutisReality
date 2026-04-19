@@ -1,0 +1,83 @@
+.ps-card {
+  text-align: center;
+  padding: 2rem;
+}
+
+.ps-status {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  min-height: 1.8rem;
+}
+
+.ps-status--watch  { color: var(--primary); }
+.ps-status--go     { color: var(--success); }
+.ps-status--correct { color: var(--success); }
+.ps-status--fail   { color: var(--accent); }
+
+.ps-sequence {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.ps-block {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  opacity: 0.3;
+}
+
+.ps-block--lit {
+  opacity: 1;
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.9), 0 0 20px 4px rgba(0,0,0,0.25);
+}
+
+.ps-progress {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.ps-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.ps-color-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.ps-color-btn:hover:not(:disabled) {
+  transform: scale(1.15);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+}
+
+.ps-color-btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.ps-color-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ps-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;
+}

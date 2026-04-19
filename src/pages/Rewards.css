@@ -1,0 +1,129 @@
+.rewards-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border-color: #fde68a;
+}
+
+.rewards-hero__star {
+  font-size: 4rem;
+  line-height: 1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.12); }
+}
+
+.rewards-hero__count {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.rewards-hero__next {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+}
+
+.rewards-hero__next--max {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.rewards-progress {
+  margin-bottom: 2rem;
+}
+
+.rewards-progress__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.rewards-progress__bar {
+  height: 14px;
+  background: var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.rewards-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  border-radius: 100px;
+  transition: width 0.5s ease;
+}
+
+.rewards-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 1.5rem 0 1rem;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.badge-card {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.badge-card--earned {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-color: #6ee7b7;
+}
+
+.badge-card--locked {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+.badge-card__emoji {
+  font-size: 2.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.badge-card__label {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.badge-card__threshold {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.rewards-tip {
+  margin-bottom: 1.5rem;
+}
+
+.rewards-tip__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.rewards-reset {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

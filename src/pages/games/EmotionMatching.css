@@ -1,0 +1,86 @@
+.em-card {
+  text-align: center;
+  padding: 2rem;
+}
+
+.em-prompt {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.em-emoji {
+  font-size: 6rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+  animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.em-feedback {
+  min-height: 1.8rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  transition: opacity 0.2s;
+}
+
+.em-feedback--hidden { opacity: 0; }
+.em-feedback--correct { color: var(--success); }
+.em-feedback--wrong   { color: var(--accent); }
+
+.em-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.em-choice-btn {
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+  color: var(--text);
+}
+
+.em-choice-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: #eef0ff;
+  transform: translateY(-2px);
+}
+
+.em-choice-btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.em-choice-btn:disabled { cursor: default; }
+
+.em-choice-btn--correct {
+  border-color: var(--success);
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.em-choice-btn--wrong {
+  border-color: var(--accent);
+  background: #ffe4e6;
+  color: #9f1239;
+}
+
+.em-choice-btn--reveal {
+  border-color: var(--success);
+  background: #d1fae5;
+}

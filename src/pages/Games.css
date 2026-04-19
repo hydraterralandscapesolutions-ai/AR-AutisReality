@@ -1,0 +1,113 @@
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.5rem;
+}
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-card__icon {
+  font-size: 2.8rem;
+}
+
+.game-card__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.game-card__desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  flex: 1;
+}
+
+.game-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.game-card__tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #ecfdf5;
+  color: #059669;
+  padding: 0.2rem 0.7rem;
+  border-radius: 100px;
+  border: 1px solid #6ee7b7;
+}
+
+.game-card__stars {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.game-card__btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* In-game shared styles */
+.game-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.game-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.game-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.game-score {
+  display: flex;
+  gap: 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.game-score span {
+  background: #f8f9ff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.3rem 0.75rem;
+}
+
+.game-result {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.game-result h2 {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.game-result p {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 1.05rem;
+}
+
+.game-result__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}

@@ -1,0 +1,49 @@
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.resource-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.resource-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resource-card__emoji {
+  font-size: 2rem;
+}
+
+.resource-card__tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #eef0ff;
+  color: var(--primary);
+  padding: 0.2rem 0.7rem;
+  border-radius: 100px;
+  border: 1px solid #c7cdf8;
+}
+
+.resource-card__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.resource-card__body {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  flex: 1;
+}
+
+.resource-card__link {
+  margin-top: auto;
+  align-self: flex-start;
+}
