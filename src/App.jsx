@@ -59,15 +59,15 @@ const defaultTasks = [
   { id: 3, label: 'Evening calm routine scheduled', done: false },
 ];
 
-function deriveRole(user) {
+export function deriveRole(user) {
   return user?.user_metadata?.role === 'admin' ? 'admin' : 'parent';
 }
 
-function isUserEmailVerified(user) {
+export function isUserEmailVerified(user) {
   return Boolean(user?.email_confirmed_at);
 }
 
-function normalizeTasks(value) {
+export function normalizeTasks(value) {
   if (!Array.isArray(value)) {
     return defaultTasks;
   }
@@ -81,11 +81,11 @@ function normalizeTasks(value) {
     }));
 }
 
-function normalizeRegulationIndex(value) {
+export function normalizeRegulationIndex(value) {
   return value >= 0 && value < regulationTools.length ? value : defaultRegulationIndex;
 }
 
-function normalizeRewardPointsByChild(value) {
+export function normalizeRewardPointsByChild(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return defaultRewardPointsByChild;
   }
@@ -97,7 +97,7 @@ function normalizeRewardPointsByChild(value) {
   );
 }
 
-function normalizeRewardMessageByChild(value) {
+export function normalizeRewardMessageByChild(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return defaultRewardMessageByChild;
   }
@@ -109,7 +109,7 @@ function normalizeRewardMessageByChild(value) {
   );
 }
 
-function normalizeRegulationIndexByChild(value) {
+export function normalizeRegulationIndexByChild(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return defaultRegulationIndexByChild;
   }
@@ -121,7 +121,7 @@ function normalizeRegulationIndexByChild(value) {
   );
 }
 
-function normalizeGameProgressByChild(value) {
+export function normalizeGameProgressByChild(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return defaultGameProgressByChild;
   }
@@ -154,7 +154,7 @@ function normalizeGameProgressByChild(value) {
   );
 }
 
-function normalizeCompletionHistory(value) {
+export function normalizeCompletionHistory(value) {
   if (!Array.isArray(value)) {
     return defaultCompletionHistory;
   }
@@ -171,7 +171,7 @@ function normalizeCompletionHistory(value) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function normalizeClaimedBadges(value) {
+export function normalizeClaimedBadges(value) {
   if (!Array.isArray(value)) {
     return defaultClaimedBadges;
   }
@@ -179,7 +179,7 @@ function normalizeClaimedBadges(value) {
   return value.filter((entry) => typeof entry === 'string');
 }
 
-function normalizeReminders(value) {
+export function normalizeReminders(value) {
   if (!Array.isArray(value)) {
     return defaultReminders;
   }
@@ -199,7 +199,7 @@ function normalizeReminders(value) {
     }));
 }
 
-function normalizeGameProgress(rows) {
+export function normalizeGameProgress(rows) {
   const map = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
     if (!row || typeof row.game_name !== 'string') {
@@ -223,19 +223,19 @@ function normalizeGameProgress(rows) {
   );
 }
 
-function parseRangeDays(dateRange) {
+export function parseRangeDays(dateRange) {
   const numeric = Number.parseInt(String(dateRange || '').replace(/[^0-9]/g, ''), 10);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 7;
 }
 
-function getNotificationPermission() {
+export function getNotificationPermission() {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return 'unsupported';
   }
   return window.Notification.permission;
 }
 
-function normalizeReminderPreferences(value) {
+export function normalizeReminderPreferences(value) {
   if (!value || typeof value !== 'object') {
     return defaultReminderPreferences;
   }
@@ -268,7 +268,7 @@ function normalizeReminderPreferences(value) {
   };
 }
 
-function normalizeReminderPreferencesByChild(value) {
+export function normalizeReminderPreferencesByChild(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return defaultReminderPreferencesByChild;
   }
@@ -285,7 +285,7 @@ function normalizeReminderPreferencesByChild(value) {
 
 const childColors = ['#7986cb', '#4db6ac', '#f06292', '#ffb74d', '#aed581', '#4fc3f7', '#ff8a65', '#ba68c8'];
 
-function normalizeChildren(value) {
+export function normalizeChildren(value) {
   if (!Array.isArray(value)) return defaultChildren;
   return value
     .filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string')
@@ -296,7 +296,7 @@ function normalizeChildren(value) {
     }));
 }
 
-function formatLastFired(ts) {
+export function formatLastFired(ts) {
   if (!ts) return null;
   const fired = new Date(ts);
   const now = new Date();
@@ -311,7 +311,7 @@ function formatLastFired(ts) {
   return `${fired.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
 }
 
-function isInDndWindow(start, end) {
+export function isInDndWindow(start, end) {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const [startH, startM] = start.split(':').map(Number);
