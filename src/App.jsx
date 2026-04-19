@@ -49,6 +49,8 @@ const defaultReminderPreferences = {
   snoozeDuration: 10,
 };
 
+const defaultReminderPreferencesByChild = {};
+
 const snoozeDurationOptions = [5, 10, 15, 30];
 
 const defaultTasks = [
@@ -130,14 +132,23 @@ function normalizeGameProgressByChild(value) {
       .map(([childId, progress]) => [
         childId,
         Array.isArray(progress)
-          ? progress
-              .filter((item) => item && typeof item.game_name === 'string')
-              .map((item) => ({
-                gameName: item.game_name,
-                sessions: Number.isFinite(item.sessions) ? item.sessions : 0,
-                highScore: Number.isFinite(item.high_score) ? item.high_score : 0,
-                lastPlayedAt: item.last_played_at || null,
-              }))
+          ? gameLibrary.map((game) => {
+              const item = progress.find(
+                (entry) =>
+                  entry &&
+                  (entry.gameName === game.name || entry.game_name === game.name)
+              );
+              return {
+                gameName: game.name,
+                sessions: Number.isFinite(item?.sessions) ? item.sessions : 0,
+                highScore: Number.isFinite(item?.highScore)
+                  ? item.highScore
+                  : Number.isFinite(item?.high_score)
+                    ? item.high_score
+                    : 0,
+                lastPlayedAt: item?.lastPlayedAt || item?.last_played_at || null,
+              };
+            })
           : defaultGameProgress,
       ])
   );
@@ -255,6 +266,21 @@ function normalizeReminderPreferences(value) {
         ? Number(value.snoozeDuration)
         : defaultReminderPreferences.snoozeDuration,
   };
+}
+
+function normalizeReminderPreferencesByChild(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaultReminderPreferencesByChild;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => typeof key === 'string')
+      .map(([childId, prefs]) => [
+        childId,
+        normalizeReminderPreferences(prefs),
+      ])
+  );
 }
 
 const childColors = ['#7986cb', '#4db6ac', '#f06292', '#ffb74d', '#aed581', '#4fc3f7', '#ff8a65', '#ba68c8'];
@@ -1166,7 +1192,9 @@ function RemindersPage({
   notificationPermission,
   onRequestNotificationPermission,
   reminderPreferences,
+  reminderPreferencesByChild,
   onUpdateReminderPreferences,
+  onUpdateReminderPreferencesForChild,
   children,
 }) {
   const [label, setLabel] = useState('');
@@ -1202,6 +1230,19 @@ function RemindersPage({
     }
     return item.childId === selectedReminderScope;
   });
+
+  const scopedReminderPreferences =
+    selectedReminderScope === 'shared'
+      ? reminderPreferences
+      : (reminderPreferencesByChild[selectedReminderScope] ?? reminderPreferences);
+
+  const updateScopedReminderPreferences = (updates) => {
+    if (selectedReminderScope === 'shared') {
+      onUpdateReminderPreferences(updates);
+      return;
+    }
+    onUpdateReminderPreferencesForChild(selectedReminderScope, updates);
+  };
 
   const startEdit = (item) => {
     setEditingId(item.id);
@@ -1324,9 +1365,9 @@ function RemindersPage({
         <label htmlFor="snoozeDuration">Snooze duration</label>
         <select
           id="snoozeDuration"
-          value={reminderPreferences.snoozeDuration}
+          value={scopedReminderPreferences.snoozeDuration}
           onChange={(event) =>
-            onUpdateReminderPreferences({ snoozeDuration: Number(event.target.value) })
+            updateScopedReminderPreferences({ snoozeDuration: Number(event.target.value) })
           }
           className="snooze-select"
         >
@@ -1337,9 +1378,9 @@ function RemindersPage({
         <label>
           <input
             type="checkbox"
-            checked={reminderPreferences.soundEnabled}
+            checked={scopedReminderPreferences.soundEnabled}
             onChange={(event) =>
-              onUpdateReminderPreferences({ soundEnabled: event.target.checked })
+              updateScopedReminderPreferences({ soundEnabled: event.target.checked })
             }
           />
           <span>Play in-app reminder sound</span>
@@ -1347,9 +1388,9 @@ function RemindersPage({
         <label>
           <input
             type="checkbox"
-            checked={reminderPreferences.vibrationEnabled}
+            checked={scopedReminderPreferences.vibrationEnabled}
             onChange={(event) =>
-              onUpdateReminderPreferences({ vibrationEnabled: event.target.checked })
+              updateScopedReminderPreferences({ vibrationEnabled: event.target.checked })
             }
             disabled={typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function'}
           />
@@ -1366,23 +1407,23 @@ function RemindersPage({
         <label className="dnd-toggle">
           <input
             type="checkbox"
-            checked={reminderPreferences.dndEnabled}
+            checked={scopedReminderPreferences.dndEnabled}
             onChange={(event) =>
-              onUpdateReminderPreferences({ dndEnabled: event.target.checked })
+              updateScopedReminderPreferences({ dndEnabled: event.target.checked })
             }
           />
           <span>Enable Do Not Disturb window</span>
         </label>
-        {reminderPreferences.dndEnabled ? (
+        {scopedReminderPreferences.dndEnabled ? (
           <div className="dnd-times">
             <label htmlFor="dndStart">
               Start
               <input
                 id="dndStart"
                 type="time"
-                value={reminderPreferences.dndStart}
+                value={scopedReminderPreferences.dndStart}
                 onChange={(event) =>
-                  onUpdateReminderPreferences({ dndStart: event.target.value })
+                  updateScopedReminderPreferences({ dndStart: event.target.value })
                 }
               />
             </label>
@@ -1391,14 +1432,14 @@ function RemindersPage({
               <input
                 id="dndEnd"
                 type="time"
-                value={reminderPreferences.dndEnd}
+                value={scopedReminderPreferences.dndEnd}
                 onChange={(event) =>
-                  onUpdateReminderPreferences({ dndEnd: event.target.value })
+                  updateScopedReminderPreferences({ dndEnd: event.target.value })
                 }
               />
             </label>
             <p className="muted dnd-note">
-              Reminders between {reminderPreferences.dndStart} and {reminderPreferences.dndEnd} will
+              Reminders between {scopedReminderPreferences.dndStart} and {scopedReminderPreferences.dndEnd} will
               be silenced. Overnight ranges (e.g. 22:00 – 07:00) are supported.
             </p>
           </div>
@@ -2008,6 +2049,7 @@ export default function App() {
     getNotificationPermission()
   );
   const [reminderPreferences, setReminderPreferences] = useState(defaultReminderPreferences);
+  const [reminderPreferencesByChild, setReminderPreferencesByChild] = useState(defaultReminderPreferencesByChild);
   const [displayName, setDisplayName] = useState('');
   const [children, setChildren] = useState(defaultChildren);
   const [rewardPointsByChild, setRewardPointsByChild] = useState(defaultRewardPointsByChild);
@@ -2062,6 +2104,7 @@ export default function App() {
       setClaimedBadges(defaultClaimedBadges);
       setReminders(defaultReminders);
       setReminderPreferences(defaultReminderPreferences);
+      setReminderPreferencesByChild(defaultReminderPreferencesByChild);
       setDisplayName('');
       setChildren(defaultChildren);
       setRewardPointsByChild(defaultRewardPointsByChild);
@@ -2083,7 +2126,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name,children,reward_points_by_child,reward_message_by_child,regulation_index_by_child,game_progress_by_child')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,reminder_preferences_by_child,display_name,children,reward_points_by_child,reward_message_by_child,regulation_index_by_child,game_progress_by_child')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -2118,6 +2161,7 @@ export default function App() {
           completion_history: defaultCompletionHistory,
           reminders: defaultReminders,
           reminder_preferences: defaultReminderPreferences,
+          reminder_preferences_by_child: defaultReminderPreferencesByChild,
           reward_points_by_child: defaultRewardPointsByChild,
           reward_message_by_child: defaultRewardMessageByChild,
           regulation_index_by_child: defaultRegulationIndexByChild,
@@ -2143,6 +2187,7 @@ export default function App() {
         setClaimedBadges(defaultClaimedBadges);
         setReminders(defaultReminders);
         setReminderPreferences(defaultReminderPreferences);
+        setReminderPreferencesByChild(defaultReminderPreferencesByChild);
         setDisplayName('');
         setChildren(defaultChildren);
         setRewardPointsByChild(defaultRewardPointsByChild);
@@ -2163,6 +2208,7 @@ export default function App() {
       setClaimedBadges(normalizeClaimedBadges(data.claimed_badges));
       setReminders(normalizeReminders(data.reminders));
       setReminderPreferences(normalizeReminderPreferences(data.reminder_preferences));
+      setReminderPreferencesByChild(normalizeReminderPreferencesByChild(data.reminder_preferences_by_child));
       setDisplayName(typeof data.display_name === 'string' ? data.display_name : '');
       setChildren(normalizeChildren(data.children));
       setRewardPointsByChild(normalizeRewardPointsByChild(data.reward_points_by_child));
@@ -2195,6 +2241,7 @@ export default function App() {
       claimed_badges: claimedBadges,
       reminders,
       reminder_preferences: reminderPreferences,
+      reminder_preferences_by_child: reminderPreferencesByChild,
       display_name: displayName,
       children,
       reward_points_by_child: rewardPointsByChild,
@@ -2213,6 +2260,7 @@ export default function App() {
     parentTasks,
     reminders,
     reminderPreferences,
+    reminderPreferencesByChild,
     regulationIndex,
     rewardMessage,
     rewardPoints,
@@ -2235,13 +2283,6 @@ export default function App() {
       const dateKey = now.toISOString().slice(0, 10);
       let nextAlert = null;
 
-      if (
-        reminderPreferences.dndEnabled &&
-        isInDndWindow(reminderPreferences.dndStart, reminderPreferences.dndEnd)
-      ) {
-        return;
-      }
-
       if (snoozeUntil !== null && Date.now() < snoozeUntil) {
         return;
       }
@@ -2256,6 +2297,14 @@ export default function App() {
         const nextKeys = [...currentKeys];
 
         for (const item of enabledMatches) {
+          const itemPreferences = item.childId
+            ? normalizeReminderPreferences(reminderPreferencesByChild[item.childId] ?? reminderPreferences)
+            : reminderPreferences;
+
+          if (itemPreferences.dndEnabled && isInDndWindow(itemPreferences.dndStart, itemPreferences.dndEnd)) {
+            continue;
+          }
+
           const firedKey = `${dateKey}-${timeKey}-${item.id}`;
           if (nextKeys.includes(firedKey)) {
             continue;
@@ -2270,7 +2319,9 @@ export default function App() {
             label: item.label,
             time: item.time,
             firedKey,
-            snoozeDuration: reminderPreferences.snoozeDuration,
+            snoozeDuration: itemPreferences.snoozeDuration,
+            soundEnabled: itemPreferences.soundEnabled,
+            vibrationEnabled: itemPreferences.vibrationEnabled,
             firedAt: new Date().toISOString(),
             childName,
           };
@@ -2292,12 +2343,12 @@ export default function App() {
           )
         );
 
-        if (reminderPreferences.soundEnabled) {
+        if (nextAlert.soundEnabled) {
           playReminderTone();
         }
 
         if (
-          reminderPreferences.vibrationEnabled &&
+          nextAlert.vibrationEnabled &&
           typeof navigator !== 'undefined' &&
           typeof navigator.vibrate === 'function'
         ) {
@@ -2330,11 +2381,8 @@ export default function App() {
     dataReady,
     isAuthenticated,
     notificationPermission,
-    reminderPreferences.dndEnabled,
-    reminderPreferences.dndEnd,
-    reminderPreferences.dndStart,
-    reminderPreferences.soundEnabled,
-    reminderPreferences.vibrationEnabled,
+    reminderPreferences,
+    reminderPreferencesByChild,
     reminders,
     children,
     snoozeUntil,
@@ -2468,7 +2516,7 @@ export default function App() {
   };
 
   const handleSnoozeReminderAlert = () => {
-    const mins = reminderPreferences.snoozeDuration;
+    const mins = reminderAlert?.snoozeDuration ?? reminderPreferences.snoozeDuration;
     setReminderAlert(null);
     setSnoozeUntil(Date.now() + mins * 60 * 1000);
   };
@@ -2487,6 +2535,16 @@ export default function App() {
     setReminderPreferences((current) => ({
       ...current,
       ...updates,
+    }));
+  };
+
+  const handleUpdateReminderPreferencesForChild = (childId, updates) => {
+    setReminderPreferencesByChild((current) => ({
+      ...current,
+      [childId]: {
+        ...(current[childId] ?? reminderPreferences),
+        ...updates,
+      },
     }));
   };
 
@@ -2785,7 +2843,9 @@ export default function App() {
                 notificationPermission={notificationPermission}
                 onRequestNotificationPermission={handleRequestNotificationPermission}
                 reminderPreferences={reminderPreferences}
+                reminderPreferencesByChild={reminderPreferencesByChild}
                 onUpdateReminderPreferences={handleUpdateReminderPreferences}
+                onUpdateReminderPreferencesForChild={handleUpdateReminderPreferencesForChild}
                 children={children}
               />
             </ProtectedRoute>

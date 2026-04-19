@@ -8,6 +8,7 @@ create table if not exists public.user_app_state (
   claimed_badges jsonb not null default '[]'::jsonb,
   reminders jsonb not null default '[]'::jsonb,
   reminder_preferences jsonb not null default '{"soundEnabled": true, "vibrationEnabled": false, "dndEnabled": false, "dndStart": "22:00", "dndEnd": "07:00"}'::jsonb,
+  reminder_preferences_by_child jsonb not null default '{}'::jsonb,
   display_name text not null default '',
   children jsonb not null default '[]'::jsonb,
   reward_points_by_child jsonb not null default '{}'::jsonb,
