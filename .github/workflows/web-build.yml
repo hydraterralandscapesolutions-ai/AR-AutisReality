@@ -20,7 +20,25 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Check required secrets
+        run: |
+          missing=()
+          [ -z "$VITE_SUPABASE_URL" ] && missing+=("VITE_SUPABASE_URL")
+          [ -z "$VITE_SUPABASE_ANON_KEY" ] && missing+=("VITE_SUPABASE_ANON_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing required secrets: ${missing[*]}"
+            echo "Add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Build app
+        env:
+          VITE_BASE_PATH: /AR-AutisReality/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
