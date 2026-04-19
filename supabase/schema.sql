@@ -132,6 +132,9 @@ begin
     select
       coalesce(sum(jsonb_array_length(s.children)), 0)::integer as total_children,
       coalesce(round(avg(jsonb_array_length(s.children))::numeric, 1), 0)::numeric as avg_children_per_family,
+      count(*) filter (where jsonb_object_length(s.reward_points_by_child) > 0)::integer as families_using_child_rewards,
+      count(*) filter (where jsonb_object_length(s.reminder_preferences_by_child) > 0)::integer as families_using_child_reminder_preferences,
+      coalesce(sum(jsonb_object_length(s.reward_points_by_child)), 0)::integer as child_reward_profiles,
       coalesce(
         sum(
           (
@@ -174,6 +177,9 @@ begin
     'active_users', state_counts.active_users,
     'total_children', family_counts.total_children,
     'avg_children_per_family', family_counts.avg_children_per_family,
+    'families_using_child_rewards', family_counts.families_using_child_rewards,
+    'families_using_child_reminder_preferences', family_counts.families_using_child_reminder_preferences,
+    'child_reward_profiles', family_counts.child_reward_profiles,
     'child_scoped_reminders', family_counts.child_scoped_reminders,
     'child_game_sessions', game_counts.child_game_sessions,
     'range_days', range_days

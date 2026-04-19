@@ -13,6 +13,7 @@ Informational support for parents of autistic children with a foundation for int
 7. Run `npm install` and `npm run dev`.
 
 Role notes:
+
 - Parent/admin role is stored in `user_metadata.role` during sign-up.
 - Admin route access requires role `admin`.
 - Parent checklist data is stored per user in `public.user_app_state.parent_tasks` (with optional `childId` for per-child scoping).
@@ -28,7 +29,7 @@ Role notes:
 - Optional browser-level notifications can be enabled from the Reminders page using the browser permission prompt.
 - Optional in-app sound and device vibration can be configured in the Reminders page.
 - A Do Not Disturb time window can be set per user; reminders within the window are silenced (supports overnight ranges such as 22:00–07:00).
-- Admin dashboard can load multi-user aggregates via `public.admin_dashboard_summary()`, including family-size, child reminder, and per-child game-session rollups.
+- Admin dashboard can load multi-user aggregates via `public.admin_dashboard_summary()`, including family-size, child reminder, per-child game-session, and child-feature adoption rollups.
 - Shared game progress is stored per user in `public.user_game_progress`.
 - Per-child game progress is stored per user in `public.user_app_state.game_progress_by_child`.
 

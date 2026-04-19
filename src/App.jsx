@@ -1792,6 +1792,10 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
     const activeUsers = Number(summary?.active_users) || 0;
     const totalChildren = Number(summary?.total_children) || 0;
     const avgChildrenPerFamily = Number(summary?.avg_children_per_family) || 0;
+    const familiesUsingChildRewards = Number(summary?.families_using_child_rewards) || 0;
+    const familiesUsingChildReminderPreferences =
+      Number(summary?.families_using_child_reminder_preferences) || 0;
+    const childRewardProfiles = Number(summary?.child_reward_profiles) || 0;
     const childScopedReminders = Number(summary?.child_scoped_reminders) || 0;
     const childGameSessions = Number(summary?.child_game_sessions) || 0;
     const rangeDays = Number(summary?.range_days) || 7;
@@ -1844,6 +1848,24 @@ function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, us
         title: 'Avg children per family',
         value: avgChildrenPerFamily,
         note: 'Average roster size across stored family records.',
+      },
+      {
+        id: 'families-using-child-rewards',
+        title: 'Families using child rewards',
+        value: familiesUsingChildRewards,
+        note: 'Accounts with per-child reward balances enabled.',
+      },
+      {
+        id: 'families-using-child-reminder-preferences',
+        title: 'Families using child reminder prefs',
+        value: familiesUsingChildReminderPreferences,
+        note: 'Accounts with child-specific reminder preference overrides.',
+      },
+      {
+        id: 'child-reward-profiles',
+        title: 'Child reward profiles',
+        value: childRewardProfiles,
+        note: 'Total child entries present in reward-by-child state maps.',
       },
       {
         id: 'child-scoped-reminders',
