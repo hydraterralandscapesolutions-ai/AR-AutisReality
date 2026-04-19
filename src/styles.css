@@ -171,6 +171,32 @@ button {
   margin-top: 14px;
 }
 
+.auth-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-form {
+  display: grid;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.login-form input,
+.login-form select {
+  border: 1px solid rgba(22, 48, 41, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  font: inherit;
+}
+
+.login-mode {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
 @media (max-width: 900px) {
   .topbar,
   .panel-grid,
@@ -182,6 +208,10 @@ button {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .auth-chip {
+    flex-wrap: wrap;
   }
 
   .hero-panel {
@@ -199,6 +229,10 @@ button {
   }
 
   .action-row {
+    flex-direction: column;
+  }
+
+  .login-mode {
     flex-direction: column;
   }
 }

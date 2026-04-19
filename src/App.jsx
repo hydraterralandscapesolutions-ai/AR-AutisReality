@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { hasSupabaseConfig, supabase } from './lib/supabaseClient';
 
 const gameLibrary = [
   { name: 'Emotion Match', level: 'Beginner', focus: 'Emotion vocabulary' },
@@ -18,8 +19,6 @@ const parentTasksKey = 'ar-autis-parent-tasks';
 const rewardPointsKey = 'ar-autis-reward-points';
 const rewardMessageKey = 'ar-autis-reward-message';
 const regulationIndexKey = 'ar-autis-regulation-index';
-const authNameKey = 'ar-autis-auth-name';
-const authRoleKey = 'ar-autis-auth-role';
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -47,6 +46,10 @@ function loadNumberState(key, fallback) {
 function loadStringState(key, fallback) {
   const value = localStorage.getItem(key);
   return value ?? fallback;
+}
+
+function deriveRole(user) {
+  return user?.user_metadata?.role === 'admin' ? 'admin' : 'parent';
 }
 
 function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
@@ -89,8 +92,17 @@ function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
   );
 }
 
-function ProtectedRoute({ isAuthenticated, role, allowedRoles, children }) {
+function ProtectedRoute({ isAuthenticated, authLoading, role, allowedRoles, children }) {
   const location = useLocation();
+
+  if (authLoading) {
+    return (
+      <section className="single-panel">
+        <p className="eyebrow">Loading</p>
+        <h2>Checking your session...</h2>
+      </section>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -103,40 +115,100 @@ function ProtectedRoute({ isAuthenticated, role, allowedRoles, children }) {
   return children;
 }
 
-function LoginPage({ onSignIn }) {
+function LoginPage({ isSupabaseReady, onSignIn, onSignUp, authError, authInfo, isSubmitting }) {
   const location = useLocation();
   const from = location.state?.from ?? '/';
-  const [name, setName] = useState('Parent Account');
+  const [name, setName] = useState('');
   const [role, setRole] = useState('parent');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState('signin');
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    onSignIn(name.trim() || 'Parent Account', role);
+    const payload = {
+      email: email.trim(),
+      password,
+      role,
+      fullName: name.trim() || 'Parent Account',
+    };
+
+    if (mode === 'signup') {
+      onSignUp(payload);
+      return;
+    }
+
+    onSignIn(payload);
   };
 
   return (
     <section className="single-panel login-panel">
       <p className="eyebrow">Access</p>
-      <h2>Sign in to unlock family tools</h2>
-      <p className="muted">Protected routes are now enabled. Sign in to continue to {from}.</p>
+      <h2>{mode === 'signup' ? 'Create account' : 'Sign in to unlock family tools'}</h2>
+      <p className="muted">
+        {isSupabaseReady
+          ? `Continue to ${from} once authenticated.`
+          : 'Supabase environment variables are missing. Add them before signing in.'}
+      </p>
+      {authInfo ? <p className="muted">{authInfo}</p> : null}
+      {authError ? <p className="muted">{authError}</p> : null}
       <form className="login-form" onSubmit={handleSubmit}>
+        <label htmlFor="profileEmail">Email</label>
+        <input
+          id="profileEmail"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          type="email"
+          placeholder="parent@example.com"
+          required
+        />
+        <label htmlFor="profilePassword">Password</label>
+        <input
+          id="profilePassword"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          type="password"
+          minLength={6}
+          required
+        />
         <label htmlFor="profileName">Profile name</label>
         <input
           id="profileName"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Parent Account"
+          required={mode === 'signup'}
+          disabled={mode !== 'signup'}
         />
         <label htmlFor="profileRole">Role</label>
         <select
           id="profileRole"
           value={role}
           onChange={(event) => setRole(event.target.value)}
+          disabled={mode !== 'signup'}
         >
           <option value="parent">Parent</option>
           <option value="admin">Admin</option>
         </select>
-        <button type="submit">Sign in</button>
+        <button type="submit" disabled={!isSupabaseReady || isSubmitting}>
+          {isSubmitting ? 'Please wait...' : mode === 'signup' ? 'Create account' : 'Sign in'}
+        </button>
+      </form>
+      <form className="login-mode" onSubmit={(event) => event.preventDefault()}>
+        <button
+          type="button"
+          className={mode === 'signin' ? 'secondary' : ''}
+          onClick={() => setMode('signin')}
+        >
+          Existing account
+        </button>
+        <button
+          type="button"
+          className={mode === 'signup' ? 'secondary' : ''}
+          onClick={() => setMode('signup')}
+        >
+          New account
+        </button>
       </form>
     </section>
   );
@@ -342,37 +414,106 @@ function NotFoundPage() {
 }
 
 export default function App() {
-  const [profileName, setProfileName] = useState(() => loadStringState(authNameKey, ''));
-  const [role, setRole] = useState(() => loadStringState(authRoleKey, 'parent'));
-  const isAuthenticated = Boolean(profileName);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [authInfo, setAuthInfo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!profileName) {
-      localStorage.removeItem(authNameKey);
+    if (!hasSupabaseConfig || !supabase) {
+      setAuthLoading(false);
       return;
     }
-    localStorage.setItem(authNameKey, profileName);
-  }, [profileName]);
 
-  useEffect(() => {
-    localStorage.setItem(authRoleKey, role);
-  }, [role]);
+    let active = true;
 
-  const handleSignIn = (name, nextRole) => {
-    setProfileName(name);
-    setRole(nextRole === 'admin' ? 'admin' : 'parent');
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) {
+        return;
+      }
+      setUser(data.session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignIn = async ({ email, password }) => {
+    if (!supabase) {
+      return;
+    }
+
+    setAuthError('');
+    setAuthInfo('');
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    }
+
+    setIsSubmitting(false);
   };
 
-  const handleSignOut = () => {
-    setProfileName('');
-    setRole('parent');
-    localStorage.removeItem(authRoleKey);
+  const handleSignUp = async ({ email, password, fullName, role }) => {
+    if (!supabase) {
+      return;
+    }
+
+    setAuthError('');
+    setAuthInfo('');
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: role === 'admin' ? 'admin' : 'parent',
+        },
+      },
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthInfo('Account created. Check your email for confirmation if required.');
+    }
+
+    setIsSubmitting(false);
   };
+
+  const handleSignOut = async () => {
+    if (!supabase) {
+      return;
+    }
+    await supabase.auth.signOut();
+  };
+
+  const role = deriveRole(user);
+  const profileName = user?.user_metadata?.full_name || user?.email || 'Account';
+  const isAuthenticated = Boolean(user);
 
   return (
     <AppShell
       isAuthenticated={isAuthenticated}
-      profileName={profileName || 'Guest'}
+      profileName={profileName}
       role={role}
       onSignOut={handleSignOut}
     >
@@ -380,14 +521,25 @@ export default function App() {
         <Route
           path="/login"
           element={
-            isAuthenticated ? <Navigate to="/" replace /> : <LoginPage onSignIn={handleSignIn} />
+            isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <LoginPage
+                isSupabaseReady={hasSupabaseConfig}
+                onSignIn={handleSignIn}
+                onSignUp={handleSignUp}
+                authError={authError}
+                authInfo={authInfo}
+                isSubmitting={isSubmitting}
+              />
+            )
           }
         />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route
           path="/"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role}>
               <HomePage />
             </ProtectedRoute>
           }
@@ -395,7 +547,7 @@ export default function App() {
         <Route
           path="/parents"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role} allowedRoles={['parent', 'admin']}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['parent', 'admin']}>
               <ParentsPage />
             </ProtectedRoute>
           }
@@ -403,7 +555,7 @@ export default function App() {
         <Route
           path="/games"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role}>
               <GamesPage />
             </ProtectedRoute>
           }
@@ -411,7 +563,7 @@ export default function App() {
         <Route
           path="/rewards"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role} allowedRoles={['parent', 'admin']}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['parent', 'admin']}>
               <RewardsPage />
             </ProtectedRoute>
           }
@@ -419,7 +571,7 @@ export default function App() {
         <Route
           path="/regulation"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role} allowedRoles={['parent', 'admin']}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['parent', 'admin']}>
               <RegulationPage />
             </ProtectedRoute>
           }
@@ -427,7 +579,7 @@ export default function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role} allowedRoles={['admin']}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role} allowedRoles={['admin']}>
               <AdminPage />
             </ProtectedRoute>
           }
@@ -435,7 +587,7 @@ export default function App() {
         <Route
           path="*"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated} role={role}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading} role={role}>
               <NotFoundPage />
             </ProtectedRoute>
           }
