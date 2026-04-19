@@ -37,6 +37,7 @@ const defaultChildren = [];
 const defaultRewardPointsByChild = {};
 const defaultRewardMessageByChild = {};
 const defaultRegulationIndexByChild = {};
+const defaultGameProgressByChild = {};
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const allDays = [0, 1, 2, 3, 4, 5, 6];
 const defaultReminderPreferences = {
@@ -115,6 +116,30 @@ function normalizeRegulationIndexByChild(value) {
     Object.entries(value)
       .filter(([key, index]) => typeof key === 'string' && Number.isFinite(index))
       .map(([key, index]) => [key, normalizeRegulationIndex(Number(index))])
+  );
+}
+
+function normalizeGameProgressByChild(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaultGameProgressByChild;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => typeof key === 'string')
+      .map(([childId, progress]) => [
+        childId,
+        Array.isArray(progress)
+          ? progress
+              .filter((item) => item && typeof item.game_name === 'string')
+              .map((item) => ({
+                gameName: item.game_name,
+                sessions: Number.isFinite(item.sessions) ? item.sessions : 0,
+                highScore: Number.isFinite(item.high_score) ? item.high_score : 0,
+                lastPlayedAt: item.last_played_at || null,
+              }))
+          : defaultGameProgress,
+      ])
   );
 }
 
@@ -841,13 +866,66 @@ function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory,
   );
 }
 
-function GamesPage({ gameProgress, onPlayGame }) {
-  const byName = new Map(gameProgress.map((item) => [item.gameName, item]));
+function GamesPage({ gameProgress, onPlayGame, children, gameProgressByChild, onPlayGameChild }) {
+  const [selectedScope, setSelectedScope] = useState(children.length > 0 ? children[0].id : 'shared');
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setSelectedScope('shared');
+      return;
+    }
+
+    if (selectedScope === 'shared') {
+      return;
+    }
+
+    if (!children.some((child) => child.id === selectedScope)) {
+      setSelectedScope(children[0].id);
+    }
+  }, [children, selectedScope]);
+
+  const scopedGameProgress =
+    selectedScope === 'shared' ? gameProgress : (gameProgressByChild[selectedScope] ?? defaultGameProgress);
+
+  const scopedOnPlayGame = (gameName, score) => {
+    if (selectedScope === 'shared') {
+      onPlayGame(gameName, score);
+      return;
+    }
+    onPlayGameChild(selectedScope, gameName, score);
+  };
+
+  const byName = new Map(scopedGameProgress.map((item) => [item.gameName, item]));
 
   return (
     <section className="single-panel">
       <p className="eyebrow">Learning Games</p>
       <h2>Game library</h2>
+      {children.length > 0 && (
+        <div className="child-selector" role="tablist" aria-label="Select game scope">
+          <button
+            type="button"
+            className={selectedScope === 'shared' ? '' : 'secondary'}
+            onClick={() => setSelectedScope('shared')}
+            role="tab"
+            aria-selected={selectedScope === 'shared'}
+          >
+            Shared
+          </button>
+          {children.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              className={selectedScope === child.id ? '' : 'secondary'}
+              onClick={() => setSelectedScope(child.id)}
+              role="tab"
+              aria-selected={selectedScope === child.id}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="tile-grid">
         {gameLibrary.map((game) => (
           <article className="tile" key={game.name}>
@@ -870,7 +948,7 @@ function GamesPage({ gameProgress, onPlayGame }) {
             </p>
             <button
               type="button"
-              onClick={() => onPlayGame(game.name, Math.floor(60 + Math.random() * 41))}
+              onClick={() => scopedOnPlayGame(game.name, Math.floor(60 + Math.random() * 41))}
             >
               Play session
             </button>
@@ -1460,6 +1538,7 @@ function AchievementsPage({
   claimedBadges,
   setClaimedBadges,
   children,
+  gameProgressByChild,
 }) {
   const [selectedScope, setSelectedScope] = useState(children.length > 0 ? children[0].id : 'shared');
 
@@ -1487,7 +1566,10 @@ function AchievementsPage({
       ? rewardPoints
       : (rewardPointsByChild[selectedScope] ?? defaultRewardPoints);
 
-  const totalGameSessions = gameProgress.reduce((sum, entry) => sum + entry.sessions, 0);
+  const scopedGameProgress =
+    selectedScope === 'shared' ? gameProgress : (gameProgressByChild[selectedScope] ?? defaultGameProgress);
+
+  const totalGameSessions = scopedGameProgress.reduce((sum, entry) => sum + entry.sessions, 0);
   const averageCompletion =
     scopedHistory.length > 0
       ? Math.round(
@@ -1931,6 +2013,7 @@ export default function App() {
   const [rewardPointsByChild, setRewardPointsByChild] = useState(defaultRewardPointsByChild);
   const [rewardMessageByChild, setRewardMessageByChild] = useState(defaultRewardMessageByChild);
   const [regulationIndexByChild, setRegulationIndexByChild] = useState(defaultRegulationIndexByChild);
+  const [gameProgressByChild, setGameProgressByChild] = useState(defaultGameProgressByChild);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1984,6 +2067,7 @@ export default function App() {
       setRewardPointsByChild(defaultRewardPointsByChild);
       setRewardMessageByChild(defaultRewardMessageByChild);
       setRegulationIndexByChild(defaultRegulationIndexByChild);
+      setGameProgressByChild(defaultGameProgressByChild);
       setReminderAlert(null);
       setTriggeredReminderKeys([]);
       setSnoozeUntil(null);
@@ -1999,7 +2083,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name,children,reward_points_by_child,reward_message_by_child,regulation_index_by_child')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name,children,reward_points_by_child,reward_message_by_child,regulation_index_by_child,game_progress_by_child')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -2037,6 +2121,7 @@ export default function App() {
           reward_points_by_child: defaultRewardPointsByChild,
           reward_message_by_child: defaultRewardMessageByChild,
           regulation_index_by_child: defaultRegulationIndexByChild,
+          game_progress_by_child: defaultGameProgressByChild,
         });
 
         if (!active) {
@@ -2063,6 +2148,7 @@ export default function App() {
         setRewardPointsByChild(defaultRewardPointsByChild);
         setRewardMessageByChild(defaultRewardMessageByChild);
         setRegulationIndexByChild(defaultRegulationIndexByChild);
+        setGameProgressByChild(defaultGameProgressByChild);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -2082,6 +2168,7 @@ export default function App() {
       setRewardPointsByChild(normalizeRewardPointsByChild(data.reward_points_by_child));
       setRewardMessageByChild(normalizeRewardMessageByChild(data.reward_message_by_child));
       setRegulationIndexByChild(normalizeRegulationIndexByChild(data.regulation_index_by_child));
+      setGameProgressByChild(normalizeGameProgressByChild(data.game_progress_by_child));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -2113,6 +2200,7 @@ export default function App() {
       reward_points_by_child: rewardPointsByChild,
       reward_message_by_child: rewardMessageByChild,
       regulation_index_by_child: regulationIndexByChild,
+      game_progress_by_child: gameProgressByChild,
     });
   }, [
     children,
@@ -2120,6 +2208,7 @@ export default function App() {
     completionHistory,
     dataReady,
     displayName,
+    gameProgressByChild,
     isAuthenticated,
     parentTasks,
     reminders,
@@ -2295,6 +2384,26 @@ export default function App() {
         };
       })
     );
+  };
+
+  const handlePlayGameChild = (childId, gameName, score) => {
+    setGameProgressByChild((current) => {
+      const childProgress = current[childId] ?? defaultGameProgress;
+      const updated = childProgress.map((entry) => {
+        if (entry.gameName !== gameName) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          sessions: entry.sessions + 1,
+          highScore: Math.max(entry.highScore, score),
+          lastPlayedAt: new Date().toISOString(),
+        };
+      });
+
+      return { ...current, [childId]: updated };
+    });
   };
 
   const handleSignIn = async ({ email, password }) => {
@@ -2575,7 +2684,13 @@ export default function App() {
               requireVerified
               isEmailVerified={isEmailVerified}
             >
-              <GamesPage gameProgress={gameProgress} onPlayGame={handlePlayGame} />
+              <GamesPage
+                gameProgress={gameProgress}
+                onPlayGame={handlePlayGame}
+                children={children}
+                gameProgressByChild={gameProgressByChild}
+                onPlayGameChild={handlePlayGameChild}
+              />
             </ProtectedRoute>
           }
         />
@@ -2647,6 +2762,7 @@ export default function App() {
                 claimedBadges={claimedBadges}
                 setClaimedBadges={setClaimedBadges}
                 children={children}
+                gameProgressByChild={gameProgressByChild}
               />
             </ProtectedRoute>
           }

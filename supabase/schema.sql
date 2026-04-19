@@ -13,6 +13,7 @@ create table if not exists public.user_app_state (
   reward_points_by_child jsonb not null default '{}'::jsonb,
   reward_message_by_child jsonb not null default '{}'::jsonb,
   regulation_index_by_child jsonb not null default '{}'::jsonb,
+  game_progress_by_child jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 
