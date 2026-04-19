@@ -803,6 +803,32 @@ function RemindersPage({
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('08:00');
   const [days, setDays] = useState(allDays);
+  const [editingId, setEditingId] = useState(null);
+  const [editTime, setEditTime] = useState('08:00');
+  const [editDays, setEditDays] = useState(allDays);
+
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditTime(item.time);
+    setEditDays(item.days ?? allDays);
+  };
+
+  const cancelEdit = () => setEditingId(null);
+
+  const saveEdit = (id) => {
+    setReminders((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, time: editTime, days: editDays.length > 0 ? editDays : allDays } : item
+      )
+    );
+    setEditingId(null);
+  };
+
+  const toggleEditDay = (day) => {
+    setEditDays((current) =>
+      current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort((a, b) => a - b)
+    );
+  };
 
   const toggleDay = (day) => {
     setDays((current) =>
@@ -1001,21 +1027,61 @@ function RemindersPage({
               <div>
                 <p className="eyebrow">{item.enabled ? 'Enabled' : 'Paused'}</p>
                 <h3>{item.label}</h3>
-                <p className="muted">Time: {item.time}</p>
-                <p className="muted">
-                  Repeats:{' '}
-                  {item.days && item.days.length < 7
-                    ? item.days.map((d) => dayNames[d]).join(', ')
-                    : 'Every day'}
-                </p>
+                {editingId === item.id ? (
+                  <div className="reminder-edit-panel">
+                    <label htmlFor={`editTime-${item.id}`}>Time</label>
+                    <input
+                      id={`editTime-${item.id}`}
+                      type="time"
+                      value={editTime}
+                      onChange={(e) => setEditTime(e.target.value)}
+                      className="reminder-edit-input"
+                    />
+                    <fieldset className="day-picker day-picker--compact">
+                      <legend>Repeat on</legend>
+                      <div className="day-picker-shortcuts">
+                        <button type="button" className="secondary" onClick={() => setEditDays(allDays)}>Every day</button>
+                        <button type="button" className="secondary" onClick={() => setEditDays([1,2,3,4,5])}>Weekdays</button>
+                        <button type="button" className="secondary" onClick={() => setEditDays([0,6])}>Weekends</button>
+                      </div>
+                      <div className="day-picker-row">
+                        {dayNames.map((name, index) => (
+                          <label key={name} className="day-label">
+                            <input
+                              type="checkbox"
+                              checked={editDays.includes(index)}
+                              onChange={() => toggleEditDay(index)}
+                            />
+                            {name}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <div className="action-row">
+                      <button type="button" onClick={() => saveEdit(item.id)}>Save</button>
+                      <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="muted">Time: {item.time}</p>
+                    <p className="muted">
+                      Repeats:{' '}
+                      {item.days && item.days.length < 7
+                        ? item.days.map((d) => dayNames[d]).join(', ')
+                        : 'Every day'}
+                    </p>
+                  </>
+                )}
               </div>
               <div className="action-row">
+                {editingId !== item.id && (
+                  <button type="button" className="secondary" onClick={() => startEdit(item)}>Edit</button>
+                )}
                 <button type="button" className="secondary" onClick={() => toggleReminder(item.id)}>
                   {item.enabled ? 'Pause' : 'Enable'}
                 </button>
-                <button type="button" className="secondary" onClick={() => removeReminder(item.id)}>
-                  Delete
-                </button>
+                <button type="button" className="secondary" onClick={() => removeReminder(item.id)}>Delete</button>
               </div>
             </article>
           ))
