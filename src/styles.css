@@ -40,10 +40,27 @@ button {
   margin-bottom: 18px;
 }
 
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: clamp(48px, 6vw, 72px);
+  height: clamp(48px, 6vw, 72px);
+  flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: contain;
+  /* slight drop shadow to lift the logo off the background */
+  filter: drop-shadow(0 2px 6px rgba(26, 36, 84, 0.25));
+}
+
 .brand-block h1 {
   margin: 0;
   font-size: clamp(1.4rem, 2.8vw, 2.2rem);
 }
+
 
 .topnav {
   display: flex;
