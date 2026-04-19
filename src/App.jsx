@@ -18,6 +18,7 @@ const regulationTools = [
 const defaultRewardPoints = 12;
 const defaultRewardMessage = 'Great consistency this week.';
 const defaultRegulationIndex = 0;
+const defaultCompletionHistory = [];
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -48,6 +49,22 @@ function normalizeTasks(value) {
 
 function normalizeRegulationIndex(value) {
   return value >= 0 && value < regulationTools.length ? value : defaultRegulationIndex;
+}
+
+function normalizeCompletionHistory(value) {
+  if (!Array.isArray(value)) {
+    return defaultCompletionHistory;
+  }
+
+  return value
+    .filter((entry) => entry && typeof entry.date === 'string')
+    .map((entry) => ({
+      date: entry.date,
+      completionRate: Number.isFinite(entry.completionRate) ? entry.completionRate : 0,
+      completed: Number.isFinite(entry.completed) ? entry.completed : 0,
+      total: Number.isFinite(entry.total) ? entry.total : 0,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function AppShell({ children, isAuthenticated, isEmailVerified, profileName, role, onSignOut }) {
@@ -370,7 +387,7 @@ function HomePage() {
   );
 }
 
-function ParentsPage({ tasks, setTasks }) {
+function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory }) {
 
   const toggleTask = (id) => {
     setTasks((current) =>
@@ -379,6 +396,40 @@ function ParentsPage({ tasks, setTasks }) {
   };
 
   const completed = tasks.filter((task) => task.done).length;
+  const completionRate = Math.round((completed / tasks.length) * 100);
+
+  const recordTodayProgress = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const snapshot = {
+      date: today,
+      completionRate,
+      completed,
+      total: tasks.length,
+    };
+
+    setCompletionHistory((current) => {
+      const filtered = current.filter((entry) => entry.date !== today);
+      return [...filtered, snapshot].sort((a, b) => a.date.localeCompare(b.date));
+    });
+  };
+
+  const recentHistory = completionHistory.slice(-7);
+  const bestRate = recentHistory.reduce((max, entry) => Math.max(max, entry.completionRate), 0);
+  const averageRate =
+    recentHistory.length > 0
+      ? Math.round(
+          recentHistory.reduce((sum, entry) => sum + entry.completionRate, 0) / recentHistory.length
+        )
+      : completionRate;
+
+  let streak = 0;
+  for (let i = completionHistory.length - 1; i >= 0; i -= 1) {
+    if (completionHistory[i].completionRate >= 80) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
 
   return (
     <section className="single-panel">
@@ -386,6 +437,10 @@ function ParentsPage({ tasks, setTasks }) {
       <h2>Daily support plan</h2>
       <p className="muted">Track routines that reduce uncertainty and improve transitions.</p>
       <p className="metric">Completed today: {completed} / {tasks.length}</p>
+      <p className="muted">Completion rate: {completionRate}%</p>
+      <div className="action-row">
+        <button type="button" onClick={recordTodayProgress}>Record today progress</button>
+      </div>
       <ul className="checklist">
         {tasks.map((task) => (
           <li key={task.id}>
@@ -400,6 +455,41 @@ function ParentsPage({ tasks, setTasks }) {
           </li>
         ))}
       </ul>
+      <section className="analytics-block" aria-label="Parent analytics">
+        <h3>Weekly analytics</h3>
+        <div className="analytics-grid">
+          <article className="analytics-card">
+            <p className="eyebrow">Consistency streak</p>
+            <p className="metric">{streak} days</p>
+            <p className="muted">Streak counts days with 80%+ completion.</p>
+          </article>
+          <article className="analytics-card">
+            <p className="eyebrow">Weekly average</p>
+            <p className="metric">{averageRate}%</p>
+            <p className="muted">Average from your last 7 recorded days.</p>
+          </article>
+          <article className="analytics-card">
+            <p className="eyebrow">Best day</p>
+            <p className="metric">{bestRate}%</p>
+            <p className="muted">Highest completion rate in recent history.</p>
+          </article>
+        </div>
+        <div className="trend-grid" role="list" aria-label="Completion trend bars">
+          {recentHistory.length === 0 ? (
+            <p className="muted">No trend data yet. Record your first day to start analytics.</p>
+          ) : (
+            recentHistory.map((entry) => (
+              <div className="trend-row" role="listitem" key={entry.date}>
+                <span>{entry.date.slice(5)}</span>
+                <div className="trend-bar-shell" aria-hidden="true">
+                  <div className="trend-bar-fill" style={{ width: `${entry.completionRate}%` }} />
+                </div>
+                <span>{entry.completionRate}%</span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
     </section>
   );
 }
@@ -524,6 +614,7 @@ export default function App() {
   const [rewardPoints, setRewardPoints] = useState(defaultRewardPoints);
   const [rewardMessage, setRewardMessage] = useState(defaultRewardMessage);
   const [regulationIndex, setRegulationIndex] = useState(defaultRegulationIndex);
+  const [completionHistory, setCompletionHistory] = useState(defaultCompletionHistory);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -563,6 +654,7 @@ export default function App() {
       setRewardPoints(defaultRewardPoints);
       setRewardMessage(defaultRewardMessage);
       setRegulationIndex(defaultRegulationIndex);
+      setCompletionHistory(defaultCompletionHistory);
       setDataReady(false);
       setDataLoading(false);
       return;
@@ -575,7 +667,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -596,6 +688,7 @@ export default function App() {
           reward_points: defaultRewardPoints,
           reward_message: defaultRewardMessage,
           regulation_index: defaultRegulationIndex,
+          completion_history: defaultCompletionHistory,
         });
 
         if (!active) {
@@ -612,6 +705,7 @@ export default function App() {
         setRewardPoints(defaultRewardPoints);
         setRewardMessage(defaultRewardMessage);
         setRegulationIndex(defaultRegulationIndex);
+        setCompletionHistory(defaultCompletionHistory);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -621,6 +715,7 @@ export default function App() {
       setRewardPoints(Number.isFinite(data.reward_points) ? data.reward_points : defaultRewardPoints);
       setRewardMessage(typeof data.reward_message === 'string' ? data.reward_message : defaultRewardMessage);
       setRegulationIndex(normalizeRegulationIndex(data.regulation_index));
+      setCompletionHistory(normalizeCompletionHistory(data.completion_history));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -643,8 +738,10 @@ export default function App() {
       reward_points: rewardPoints,
       reward_message: rewardMessage,
       regulation_index: regulationIndex,
+      completion_history: completionHistory,
     });
   }, [
+    completionHistory,
     dataReady,
     isAuthenticated,
     parentTasks,
@@ -880,7 +977,12 @@ export default function App() {
               requireVerified
               isEmailVerified={isEmailVerified}
             >
-              <ParentsPage tasks={parentTasks} setTasks={setParentTasks} />
+              <ParentsPage
+                tasks={parentTasks}
+                setTasks={setParentTasks}
+                completionHistory={completionHistory}
+                setCompletionHistory={setCompletionHistory}
+              />
             </ProtectedRoute>
           }
         />

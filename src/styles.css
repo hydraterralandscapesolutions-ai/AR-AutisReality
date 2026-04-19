@@ -212,6 +212,48 @@ button {
   flex-wrap: wrap;
 }
 
+.analytics-block {
+  margin-top: 18px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.analytics-card {
+  border-radius: 16px;
+  border: 1px solid rgba(22, 48, 41, 0.12);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 14px;
+}
+
+.trend-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.trend-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend-bar-shell {
+  border-radius: 999px;
+  background: rgba(22, 48, 41, 0.1);
+  height: 10px;
+  overflow: hidden;
+}
+
+.trend-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1d6b57 0%, #3aa887 100%);
+}
+
 @media (max-width: 900px) {
   .topbar,
   .panel-grid,
@@ -253,5 +295,9 @@ button {
 
   .inline-actions {
     flex-direction: column;
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
   }
 }

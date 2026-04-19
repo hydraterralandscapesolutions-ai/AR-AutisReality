@@ -16,6 +16,7 @@ Role notes:
 - Parent/admin role is stored in `user_metadata.role` during sign-up.
 - Admin route access requires role `admin`.
 - Parent checklist, rewards, and regulation data are stored per user in `public.user_app_state`.
+- Parent completion history analytics are stored per user in `public.user_app_state.completion_history`.
 
 Password and verification notes:
 - Verification is required before accessing protected routes.
