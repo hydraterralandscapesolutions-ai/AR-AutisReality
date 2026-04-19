@@ -15,18 +15,22 @@ Informational support for parents of autistic children with a foundation for int
 Role notes:
 - Parent/admin role is stored in `user_metadata.role` during sign-up.
 - Admin route access requires role `admin`.
-- Parent checklist, rewards, and regulation data are stored per user in `public.user_app_state`.
+- Parent checklist data is stored per user in `public.user_app_state.parent_tasks` (with optional `childId` for per-child scoping).
+- Child profiles are stored per user in `public.user_app_state.children`.
+- Shared rewards and regulation state are stored in `public.user_app_state.reward_points`, `public.user_app_state.reward_message`, and `public.user_app_state.regulation_index`.
+- Per-child rewards and regulation state are stored in `public.user_app_state.reward_points_by_child`, `public.user_app_state.reward_message_by_child`, and `public.user_app_state.regulation_index_by_child`.
 - Parent completion history analytics are stored per user in `public.user_app_state.completion_history`.
 - Claimed achievements are stored per user in `public.user_app_state.claimed_badges`.
-- Reminder schedules are stored per user in `public.user_app_state.reminders`.
-- Reminder alert preferences are stored per user in `public.user_app_state.reminder_preferences`.
+- Reminder schedules are stored per user in `public.user_app_state.reminders` (shared reminders and per-child reminders via optional `childId`).
+- Reminder alert preferences are stored per user in `public.user_app_state.reminder_preferences` (shared) and `public.user_app_state.reminder_preferences_by_child` (per-child overrides).
 - Enabled reminders trigger an in-app alert banner at the scheduled local time (once per reminder per minute).
 - The alert banner has Snooze (10 minutes) and Dismiss actions.
 - Optional browser-level notifications can be enabled from the Reminders page using the browser permission prompt.
 - Optional in-app sound and device vibration can be configured in the Reminders page.
 - A Do Not Disturb time window can be set per user; reminders within the window are silenced (supports overnight ranges such as 22:00–07:00).
 - Admin dashboard can load multi-user aggregates via `public.admin_dashboard_summary()`.
-- Game progress is stored per user in `public.user_game_progress`.
+- Shared game progress is stored per user in `public.user_game_progress`.
+- Per-child game progress is stored per user in `public.user_app_state.game_progress_by_child`.
 
 Password and verification notes:
 - Verification is required before accessing protected routes.
