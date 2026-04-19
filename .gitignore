@@ -34,6 +34,7 @@ warnings.log
 node_modules/
 dist/
 .vite/
+coverage/
 npm-debug.log*
 
 # Environment variables
