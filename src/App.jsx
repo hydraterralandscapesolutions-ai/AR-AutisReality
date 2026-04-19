@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { hasSupabaseConfig, supabase } from './lib/supabaseClient';
+import {
+  getDashboardState,
+  refreshDashboard,
+  setDashboardFilters,
+} from '../dashboard/main';
 
 const gameLibrary = [
   { name: 'Emotion Match', level: 'Beginner', focus: 'Emotion vocabulary' },
@@ -566,7 +571,65 @@ function RegulationPage({ index, setIndex }) {
   );
 }
 
-function AdminPage() {
+function AdminPage({ tasks, completionHistory, rewardPoints, regulationIndex, userRole }) {
+  const [dashboard, setDashboard] = useState(() => getDashboardState());
+
+  useEffect(() => {
+    setDashboardFilters({ userRole, dateRange: '7d' });
+  }, [userRole]);
+
+  const loadDashboard = async () => {
+    const next = await refreshDashboard(async () => {
+      const latest = completionHistory[completionHistory.length - 1];
+      const averageRate =
+        completionHistory.length > 0
+          ? Math.round(
+              completionHistory.reduce((sum, entry) => sum + entry.completionRate, 0) /
+                completionHistory.length
+            )
+          : 0;
+
+      return [
+        {
+          id: 'active-tasks',
+          title: 'Active tasks',
+          value: tasks.length,
+          note: 'Current routine tasks configured for parent planning.',
+        },
+        {
+          id: 'latest-completion',
+          title: 'Latest completion',
+          value: latest ? `${latest.completionRate}%` : 'No data',
+          note: latest ? `Recorded on ${latest.date}` : 'Record daily progress to generate insights.',
+        },
+        {
+          id: 'avg-completion',
+          title: 'Average completion',
+          value: `${averageRate}%`,
+          note: `${completionHistory.length} tracked day(s) in history.`,
+        },
+        {
+          id: 'reward-points',
+          title: 'Reward points',
+          value: rewardPoints,
+          note: 'Current motivational balance for this account.',
+        },
+        {
+          id: 'regulation-strategy',
+          title: 'Regulation index',
+          value: regulationIndex + 1,
+          note: 'Index of the selected regulation strategy in toolkit.',
+        },
+      ];
+    });
+
+    setDashboard(next);
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, [completionHistory, regulationIndex, rewardPoints, tasks]);
+
   return (
     <section className="single-panel">
       <p className="eyebrow">Admin Console</p>
@@ -575,6 +638,19 @@ function AdminPage() {
         This route is restricted to admin accounts. Use this area for moderation,
         content management, and environment settings.
       </p>
+      <div className="action-row">
+        <button type="button" onClick={loadDashboard}>Refresh dashboard</button>
+      </div>
+      <div className="analytics-grid" aria-label="Admin dashboard widgets">
+        {dashboard.widgets.map((widget) => (
+          <article key={widget.id} className="analytics-card">
+            <p className="eyebrow">{widget.title}</p>
+            <p className="metric">{widget.value}</p>
+            <p className="muted">{widget.note}</p>
+          </article>
+        ))}
+      </div>
+      <p className="muted">Last refresh: {dashboard.lastUpdatedAt || 'Not loaded yet'}</p>
     </section>
   );
 }
@@ -1050,7 +1126,13 @@ export default function App() {
               requireVerified
               isEmailVerified={isEmailVerified}
             >
-              <AdminPage />
+              <AdminPage
+                tasks={parentTasks}
+                completionHistory={completionHistory}
+                rewardPoints={rewardPoints}
+                regulationIndex={regulationIndex}
+                userRole={role}
+              />
             </ProtectedRoute>
           }
         />
