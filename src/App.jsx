@@ -133,7 +133,16 @@ function parseRangeDays(dateRange) {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 7;
 }
 
-function AppShell({ children, isAuthenticated, isEmailVerified, profileName, role, onSignOut }) {
+function AppShell({
+  children,
+  isAuthenticated,
+  isEmailVerified,
+  profileName,
+  role,
+  onSignOut,
+  reminderAlert,
+  onDismissReminderAlert,
+}) {
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -171,6 +180,18 @@ function AppShell({ children, isAuthenticated, isEmailVerified, profileName, rol
           )}
         </div>
       </header>
+      {reminderAlert ? (
+        <section className="reminder-alert" role="status" aria-live="polite">
+          <div>
+            <p className="eyebrow">Reminder Now</p>
+            <h3>{reminderAlert.label}</h3>
+            <p className="muted">Scheduled time: {reminderAlert.time}</p>
+          </div>
+          <button type="button" className="secondary" onClick={onDismissReminderAlert}>
+            Dismiss
+          </button>
+        </section>
+      ) : null}
       <main className="content">{children}</main>
     </div>
   );
@@ -1039,6 +1060,8 @@ export default function App() {
   const [gameProgress, setGameProgress] = useState(defaultGameProgress);
   const [claimedBadges, setClaimedBadges] = useState(defaultClaimedBadges);
   const [reminders, setReminders] = useState(defaultReminders);
+  const [reminderAlert, setReminderAlert] = useState(null);
+  const [triggeredReminderKeys, setTriggeredReminderKeys] = useState([]);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1082,6 +1105,8 @@ export default function App() {
       setGameProgress(defaultGameProgress);
       setClaimedBadges(defaultClaimedBadges);
       setReminders(defaultReminders);
+      setReminderAlert(null);
+      setTriggeredReminderKeys([]);
       setDataReady(false);
       setDataLoading(false);
       return;
@@ -1201,6 +1226,59 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    if (!isAuthenticated || !dataReady) {
+      return;
+    }
+
+    const checkReminders = () => {
+      const now = new Date();
+      const hour = String(now.getHours()).padStart(2, '0');
+      const minute = String(now.getMinutes()).padStart(2, '0');
+      const timeKey = `${hour}:${minute}`;
+      const dateKey = now.toISOString().slice(0, 10);
+
+      setTriggeredReminderKeys((currentKeys) => {
+        const enabledMatches = reminders.filter((item) => item.enabled && item.time === timeKey);
+        const nextKeys = [...currentKeys];
+
+        for (const item of enabledMatches) {
+          const firedKey = `${dateKey}-${timeKey}-${item.id}`;
+          if (nextKeys.includes(firedKey)) {
+            continue;
+          }
+          nextKeys.push(firedKey);
+          setReminderAlert({ id: item.id, label: item.label, time: item.time });
+          break;
+        }
+
+        if (nextKeys.length > 300) {
+          return nextKeys.slice(nextKeys.length - 300);
+        }
+
+        return nextKeys;
+      });
+    };
+
+    checkReminders();
+    const intervalId = window.setInterval(checkReminders, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [dataReady, isAuthenticated, reminders]);
+
+  useEffect(() => {
+    if (!reminderAlert) {
+      return;
+    }
+
+    const stillExists = reminders.some((item) => item.id === reminderAlert.id && item.enabled);
+    if (!stillExists) {
+      setReminderAlert(null);
+    }
+  }, [reminderAlert, reminders]);
+
+  useEffect(() => {
     if (!isAuthenticated || !dataReady || !supabase) {
       return;
     }
@@ -1290,6 +1368,10 @@ export default function App() {
       return;
     }
     await supabase.auth.signOut();
+  };
+
+  const handleDismissReminderAlert = () => {
+    setReminderAlert(null);
   };
 
   const handleRequestPasswordReset = async (email) => {
@@ -1382,6 +1464,8 @@ export default function App() {
       profileName={profileName}
       role={role}
       onSignOut={handleSignOut}
+      reminderAlert={reminderAlert}
+      onDismissReminderAlert={handleDismissReminderAlert}
     >
       <Routes>
         <Route
