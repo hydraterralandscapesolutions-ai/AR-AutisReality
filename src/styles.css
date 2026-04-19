@@ -321,6 +321,18 @@ button {
   margin-top: 2px;
 }
 
+.profile-form {
+  display: grid;
+  gap: 8px;
+  max-width: 360px;
+  margin-top: 16px;
+}
+
+.profile-saved {
+  font-size: 0.85rem;
+  color: #2e7d32;
+}
+
 .notification-panel {
   display: flex;
   gap: 10px;

@@ -285,6 +285,7 @@ function AppShell({
               <NavLink to="/regulation">Regulation</NavLink>
               <NavLink to="/reminders">Reminders</NavLink>
               <NavLink to="/achievements">Achievements</NavLink>
+              <NavLink to="/profile">Profile</NavLink>
               {role === 'admin' ? <NavLink to="/admin">Admin</NavLink> : null}
             </>
           ) : (
@@ -1402,6 +1403,41 @@ function NotFoundPage() {
   );
 }
 
+function ProfilePage({ displayName, onSaveDisplayName }) {
+  const [draft, setDraft] = useState(displayName);
+  const [saved, setSaved] = useState(false);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSaveDisplayName(draft.trim());
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  return (
+    <section className="single-panel">
+      <p className="eyebrow">Account</p>
+      <h2>Profile</h2>
+      <p className="muted">Set a display name shown in the header and throughout the app.</p>
+      <form onSubmit={handleSubmit} className="profile-form">
+        <label htmlFor="displayNameInput">Display name</label>
+        <input
+          id="displayNameInput"
+          type="text"
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setSaved(false); }}
+          placeholder="e.g. Maria"
+          maxLength={60}
+        />
+        <button type="submit" disabled={draft.trim() === displayName}>
+          Save
+        </button>
+        {saved && <p className="muted profile-saved">Display name saved!</p>}
+      </form>
+    </section>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -1425,6 +1461,7 @@ export default function App() {
     getNotificationPermission()
   );
   const [reminderPreferences, setReminderPreferences] = useState(defaultReminderPreferences);
+  const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1488,7 +1525,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -1558,6 +1595,7 @@ export default function App() {
       setClaimedBadges(normalizeClaimedBadges(data.claimed_badges));
       setReminders(normalizeReminders(data.reminders));
       setReminderPreferences(normalizeReminderPreferences(data.reminder_preferences));
+      setDisplayName(typeof data.display_name === 'string' ? data.display_name : '');
       setDataReady(true);
       setDataLoading(false);
     };
@@ -1584,11 +1622,13 @@ export default function App() {
       claimed_badges: claimedBadges,
       reminders,
       reminder_preferences: reminderPreferences,
+      display_name: displayName,
     });
   }, [
     claimedBadges,
     completionHistory,
     dataReady,
+    displayName,
     isAuthenticated,
     parentTasks,
     reminders,
@@ -1913,12 +1953,13 @@ export default function App() {
   const isEmailVerified = isUserEmailVerified(user);
   const profileName = user?.user_metadata?.full_name || user?.email || 'Account';
   const isAuthenticated = Boolean(user);
+  const greeting = displayName.trim() || profileName;
 
   return (
     <AppShell
       isAuthenticated={isAuthenticated}
       isEmailVerified={isEmailVerified}
-      profileName={profileName}
+      profileName={greeting}
       role={role}
       onSignOut={handleSignOut}
       reminderAlert={reminderAlert}
@@ -2105,6 +2146,25 @@ export default function App() {
                 onRequestNotificationPermission={handleRequestNotificationPermission}
                 reminderPreferences={reminderPreferences}
                 onUpdateReminderPreferences={handleUpdateReminderPreferences}
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute
+              isAuthenticated={isAuthenticated}
+              authLoading={authLoading}
+              dataLoading={dataLoading}
+              role={role}
+              allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
+            >
+              <ProfilePage
+                displayName={displayName}
+                onSaveDisplayName={setDisplayName}
               />
             </ProtectedRoute>
           }
