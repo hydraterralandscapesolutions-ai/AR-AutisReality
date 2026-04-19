@@ -119,6 +119,8 @@ function normalizeReminders(value) {
       days: Array.isArray(item.days) && item.days.every((d) => allDays.includes(d))
         ? item.days
         : allDays,
+      childId: typeof item.childId === 'string' ? item.childId : undefined,
+      lastFired: typeof item.lastFired === 'string' ? item.lastFired : null,
     }));
 }
 
@@ -326,6 +328,7 @@ function AppShell({
           <div>
             <p className="eyebrow">Reminder Now</p>
             <h3>{reminderAlert.label}</h3>
+            {reminderAlert.childName ? <p className="muted">Child: {reminderAlert.childName}</p> : null}
             <p className="muted">Scheduled time: {reminderAlert.time}</p>
           </div>
           <div className="action-row">
@@ -902,6 +905,7 @@ function RemindersPage({
   onRequestNotificationPermission,
   reminderPreferences,
   onUpdateReminderPreferences,
+  children,
 }) {
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('08:00');
@@ -910,6 +914,32 @@ function RemindersPage({
   const [editLabel, setEditLabel] = useState('');
   const [editTime, setEditTime] = useState('08:00');
   const [editDays, setEditDays] = useState(allDays);
+  const [selectedReminderScope, setSelectedReminderScope] = useState(
+    children.length > 0 ? children[0].id : 'shared'
+  );
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setSelectedReminderScope('shared');
+      return;
+    }
+
+    if (selectedReminderScope === 'shared') {
+      return;
+    }
+
+    const exists = children.some((child) => child.id === selectedReminderScope);
+    if (!exists) {
+      setSelectedReminderScope(children[0].id);
+    }
+  }, [children, selectedReminderScope]);
+
+  const scopedReminders = reminders.filter((item) => {
+    if (selectedReminderScope === 'shared') {
+      return !item.childId;
+    }
+    return item.childId === selectedReminderScope;
+  });
 
   const startEdit = (item) => {
     setEditingId(item.id);
@@ -960,6 +990,7 @@ function RemindersPage({
         time,
         days: days.length > 0 ? days : allDays,
         enabled: true,
+        childId: selectedReminderScope === 'shared' ? undefined : selectedReminderScope,
       },
     ]);
 
@@ -982,6 +1013,31 @@ function RemindersPage({
       <p className="eyebrow">Reminders</p>
       <h2>Family notification schedule</h2>
       <p className="muted">Set routine reminders for transitions, breaks, and emotional check-ins.</p>
+      {children.length > 0 && (
+        <div className="child-selector" role="tablist" aria-label="Select reminder scope">
+          <button
+            type="button"
+            className={selectedReminderScope === 'shared' ? '' : 'secondary'}
+            onClick={() => setSelectedReminderScope('shared')}
+            role="tab"
+            aria-selected={selectedReminderScope === 'shared'}
+          >
+            Shared
+          </button>
+          {children.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              className={selectedReminderScope === child.id ? '' : 'secondary'}
+              onClick={() => setSelectedReminderScope(child.id)}
+              role="tab"
+              aria-selected={selectedReminderScope === child.id}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="notification-panel">
         <p className="muted">
           Browser notifications:{' '}
@@ -1128,10 +1184,10 @@ function RemindersPage({
       </form>
 
       <div className="reminder-list" aria-label="Saved reminders">
-        {reminders.length === 0 ? (
-          <p className="muted">No reminders yet. Add one above to start routine notifications.</p>
+        {scopedReminders.length === 0 ? (
+          <p className="muted">No reminders in this scope yet. Add one above to start routine notifications.</p>
         ) : (
-          reminders.map((item) => (
+          scopedReminders.map((item) => (
             <article key={item.id} className="reminder-card">
               <div>
                 <p className="eyebrow">{item.enabled ? 'Enabled' : 'Paused'}</p>
@@ -1852,7 +1908,19 @@ export default function App() {
             continue;
           }
           nextKeys.push(firedKey);
-          nextAlert = { id: item.id, label: item.label, time: item.time, firedKey, snoozeDuration: reminderPreferences.snoozeDuration, firedAt: new Date().toISOString() };
+          const childName =
+            item.childId && children.length > 0
+              ? children.find((child) => child.id === item.childId)?.name || null
+              : null;
+          nextAlert = {
+            id: item.id,
+            label: item.label,
+            time: item.time,
+            firedKey,
+            snoozeDuration: reminderPreferences.snoozeDuration,
+            firedAt: new Date().toISOString(),
+            childName,
+          };
           break;
         }
 
@@ -1885,10 +1953,13 @@ export default function App() {
 
         if (notificationPermission === 'granted' && typeof window !== 'undefined' && 'Notification' in window) {
           try {
-            new window.Notification(`Reminder: ${nextAlert.label}`, {
-              body: `Scheduled for ${nextAlert.time}`,
-              tag: nextAlert.firedKey,
-            });
+            new window.Notification(
+              `Reminder${nextAlert.childName ? ` (${nextAlert.childName})` : ''}: ${nextAlert.label}`,
+              {
+                body: `Scheduled for ${nextAlert.time}`,
+                tag: nextAlert.firedKey,
+              }
+            );
           } catch {
             // Ignore browser notification dispatch failures and keep in-app alerts.
           }
@@ -1912,6 +1983,7 @@ export default function App() {
     reminderPreferences.soundEnabled,
     reminderPreferences.vibrationEnabled,
     reminders,
+    children,
     snoozeUntil,
   ]);
 
@@ -2321,6 +2393,7 @@ export default function App() {
                 onRequestNotificationPermission={handleRequestNotificationPermission}
                 reminderPreferences={reminderPreferences}
                 onUpdateReminderPreferences={handleUpdateReminderPreferences}
+                children={children}
               />
             </ProtectedRoute>
           }
