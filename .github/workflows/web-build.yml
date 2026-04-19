@@ -23,6 +23,7 @@ jobs:
         run: npm ci
 
       - name: Check required secrets
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork)
         run: |
           missing=()
           [ -z "$VITE_SUPABASE_URL" ] && missing+=("VITE_SUPABASE_URL")
@@ -39,6 +40,6 @@ jobs:
       - name: Build app
         env:
           VITE_BASE_PATH: /AR-AutisReality/
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ (github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork)) && secrets.VITE_SUPABASE_URL || 'https://example.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ (github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork)) && secrets.VITE_SUPABASE_ANON_KEY || 'pr-build-placeholder-anon-key' }}
         run: npm run build
