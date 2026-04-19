@@ -315,6 +315,12 @@ button {
   padding: 6px 10px;
 }
 
+.reminder-last-fired {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  margin-top: 2px;
+}
+
 .notification-panel {
   display: flex;
   gap: 10px;

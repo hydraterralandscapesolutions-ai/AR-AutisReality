@@ -188,6 +188,21 @@ function normalizeReminderPreferences(value) {
   };
 }
 
+function formatLastFired(ts) {
+  if (!ts) return null;
+  const fired = new Date(ts);
+  const now = new Date();
+  const firedDate = fired.toDateString();
+  const todayDate = now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const yesterdayDate = yesterday.toDateString();
+  const timeStr = fired.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (firedDate === todayDate) return `Today at ${timeStr}`;
+  if (firedDate === yesterdayDate) return `Yesterday at ${timeStr}`;
+  return `${fired.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
+}
+
 function isInDndWindow(start, end) {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -1086,6 +1101,9 @@ function RemindersPage({
                         ? item.days.map((d) => dayNames[d]).join(', ')
                         : 'Every day'}
                     </p>
+                    {item.lastFired && (
+                      <p className="muted reminder-last-fired">Last fired: {formatLastFired(item.lastFired)}</p>
+                    )}
                   </>
                 )}
               </div>
@@ -1620,7 +1638,7 @@ export default function App() {
             continue;
           }
           nextKeys.push(firedKey);
-          nextAlert = { id: item.id, label: item.label, time: item.time, firedKey, snoozeDuration: reminderPreferences.snoozeDuration };
+          nextAlert = { id: item.id, label: item.label, time: item.time, firedKey, snoozeDuration: reminderPreferences.snoozeDuration, firedAt: new Date().toISOString() };
           break;
         }
 
@@ -1633,6 +1651,11 @@ export default function App() {
 
       if (nextAlert) {
         setReminderAlert(nextAlert);
+        setReminders((current) =>
+          current.map((item) =>
+            item.id === nextAlert.id ? { ...item, lastFired: nextAlert.firedAt } : item
+          )
+        );
 
         if (reminderPreferences.soundEnabled) {
           playReminderTone();
