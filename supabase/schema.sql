@@ -8,6 +8,16 @@ create table if not exists public.user_app_state (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.user_game_progress (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  game_name text not null,
+  sessions integer not null default 0 check (sessions >= 0),
+  high_score integer not null default 0 check (high_score >= 0),
+  last_played_at timestamptz,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, game_name)
+);
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -25,7 +35,15 @@ before update on public.user_app_state
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists user_game_progress_updated_at on public.user_game_progress;
+
+create trigger user_game_progress_updated_at
+before update on public.user_game_progress
+for each row
+execute function public.set_updated_at();
+
 alter table public.user_app_state enable row level security;
+alter table public.user_game_progress enable row level security;
 
 drop policy if exists "Users can view own app state" on public.user_app_state;
 create policy "Users can view own app state"
@@ -42,6 +60,25 @@ with check (auth.uid() = user_id);
 drop policy if exists "Users can update own app state" on public.user_app_state;
 create policy "Users can update own app state"
 on public.user_app_state
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can view own game progress" on public.user_game_progress;
+create policy "Users can view own game progress"
+on public.user_game_progress
+for select
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own game progress" on public.user_game_progress;
+create policy "Users can insert own game progress"
+on public.user_game_progress
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own game progress" on public.user_game_progress;
+create policy "Users can update own game progress"
+on public.user_game_progress
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);

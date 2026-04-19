@@ -13,6 +13,13 @@ const gameLibrary = [
   { name: 'Routine Quest', level: 'Beginner', focus: 'Daily structure' },
 ];
 
+const defaultGameProgress = gameLibrary.map((game) => ({
+  gameName: game.name,
+  sessions: 0,
+  highScore: 0,
+  lastPlayedAt: null,
+}));
+
 const regulationTools = [
   '4-4 Breathing Cycle',
   '5 Senses Grounding',
@@ -70,6 +77,30 @@ function normalizeCompletionHistory(value) {
       total: Number.isFinite(entry.total) ? entry.total : 0,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeGameProgress(rows) {
+  const map = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row || typeof row.game_name !== 'string') {
+      continue;
+    }
+    map.set(row.game_name, {
+      gameName: row.game_name,
+      sessions: Number.isFinite(row.sessions) ? row.sessions : 0,
+      highScore: Number.isFinite(row.high_score) ? row.high_score : 0,
+      lastPlayedAt: row.last_played_at || null,
+    });
+  }
+
+  return gameLibrary.map((game) =>
+    map.get(game.name) || {
+      gameName: game.name,
+      sessions: 0,
+      highScore: 0,
+      lastPlayedAt: null,
+    }
+  );
 }
 
 function parseRangeDays(dateRange) {
@@ -504,7 +535,9 @@ function ParentsPage({ tasks, setTasks, completionHistory, setCompletionHistory 
   );
 }
 
-function GamesPage() {
+function GamesPage({ gameProgress, onPlayGame }) {
+  const byName = new Map(gameProgress.map((item) => [item.gameName, item]));
+
   return (
     <section className="single-panel">
       <p className="eyebrow">Learning Games</p>
@@ -512,10 +545,32 @@ function GamesPage() {
       <div className="tile-grid">
         {gameLibrary.map((game) => (
           <article className="tile" key={game.name}>
+            {(() => {
+              const progress = byName.get(game.name) || {
+                sessions: 0,
+                highScore: 0,
+                lastPlayedAt: null,
+              };
+
+              return (
+                <>
             <h3>{game.name}</h3>
             <p>Level: {game.level}</p>
             <p>Focus: {game.focus}</p>
-            <button type="button">Launch</button>
+            <p>Sessions: {progress.sessions}</p>
+            <p>High score: {progress.highScore}</p>
+            <p>
+              Last played: {progress.lastPlayedAt ? new Date(progress.lastPlayedAt).toLocaleDateString() : 'Never'}
+            </p>
+            <button
+              type="button"
+              onClick={() => onPlayGame(game.name, Math.floor(60 + Math.random() * 41))}
+            >
+              Play session
+            </button>
+                </>
+              );
+            })()}
           </article>
         ))}
       </div>
@@ -771,6 +826,7 @@ export default function App() {
   const [rewardMessage, setRewardMessage] = useState(defaultRewardMessage);
   const [regulationIndex, setRegulationIndex] = useState(defaultRegulationIndex);
   const [completionHistory, setCompletionHistory] = useState(defaultCompletionHistory);
+  const [gameProgress, setGameProgress] = useState(defaultGameProgress);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -811,6 +867,7 @@ export default function App() {
       setRewardMessage(defaultRewardMessage);
       setRegulationIndex(defaultRegulationIndex);
       setCompletionHistory(defaultCompletionHistory);
+      setGameProgress(defaultGameProgress);
       setDataReady(false);
       setDataLoading(false);
       return;
@@ -827,12 +884,23 @@ export default function App() {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      const { data: gameData, error: gameError } = await supabase
+        .from('user_game_progress')
+        .select('game_name,sessions,high_score,last_played_at')
+        .eq('user_id', user.id);
+
       if (!active) {
         return;
       }
 
       if (error) {
         setAuthError(error.message);
+        setDataLoading(false);
+        return;
+      }
+
+      if (gameError) {
+        setAuthError(gameError.message);
         setDataLoading(false);
         return;
       }
@@ -862,6 +930,7 @@ export default function App() {
         setRewardMessage(defaultRewardMessage);
         setRegulationIndex(defaultRegulationIndex);
         setCompletionHistory(defaultCompletionHistory);
+        setGameProgress(normalizeGameProgress(gameData));
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -872,6 +941,7 @@ export default function App() {
       setRewardMessage(typeof data.reward_message === 'string' ? data.reward_message : defaultRewardMessage);
       setRegulationIndex(normalizeRegulationIndex(data.regulation_index));
       setCompletionHistory(normalizeCompletionHistory(data.completion_history));
+      setGameProgress(normalizeGameProgress(gameData));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -906,6 +976,41 @@ export default function App() {
     rewardPoints,
     user?.id,
   ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !dataReady || !supabase) {
+      return;
+    }
+
+    const payload = gameProgress.map((entry) => ({
+      user_id: user.id,
+      game_name: entry.gameName,
+      sessions: entry.sessions,
+      high_score: entry.highScore,
+      last_played_at: entry.lastPlayedAt,
+    }));
+
+    supabase.from('user_game_progress').upsert(payload, {
+      onConflict: 'user_id,game_name',
+    });
+  }, [dataReady, gameProgress, isAuthenticated, user?.id]);
+
+  const handlePlayGame = (gameName, score) => {
+    setGameProgress((current) =>
+      current.map((entry) => {
+        if (entry.gameName !== gameName) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          sessions: entry.sessions + 1,
+          highScore: Math.max(entry.highScore, score),
+          lastPlayedAt: new Date().toISOString(),
+        };
+      })
+    );
+  };
 
   const handleSignIn = async ({ email, password }) => {
     if (!supabase) {
@@ -1153,7 +1258,7 @@ export default function App() {
               requireVerified
               isEmailVerified={isEmailVerified}
             >
-              <GamesPage />
+              <GamesPage gameProgress={gameProgress} onPlayGame={handlePlayGame} />
             </ProtectedRoute>
           }
         />
