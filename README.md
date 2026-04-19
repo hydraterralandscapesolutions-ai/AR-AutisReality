@@ -21,6 +21,7 @@ Role notes:
 - Reminder schedules are stored per user in `public.user_app_state.reminders`.
 - Reminder alert preferences are stored per user in `public.user_app_state.reminder_preferences`.
 - Enabled reminders trigger an in-app alert banner at the scheduled local time (once per reminder per minute).
+- The alert banner has Snooze (10 minutes) and Dismiss actions.
 - Optional browser-level notifications can be enabled from the Reminders page using the browser permission prompt.
 - Optional in-app sound and device vibration can be configured in the Reminders page.
 - A Do Not Disturb time window can be set per user; reminders within the window are silenced (supports overnight ranges such as 22:00–07:00).

@@ -237,6 +237,7 @@ function AppShell({
   onSignOut,
   reminderAlert,
   onDismissReminderAlert,
+  onSnoozeReminderAlert,
 }) {
   return (
     <div className="app-shell">
@@ -282,9 +283,14 @@ function AppShell({
             <h3>{reminderAlert.label}</h3>
             <p className="muted">Scheduled time: {reminderAlert.time}</p>
           </div>
-          <button type="button" className="secondary" onClick={onDismissReminderAlert}>
-            Dismiss
-          </button>
+          <div className="action-row">
+            <button type="button" className="secondary" onClick={onSnoozeReminderAlert}>
+              Snooze 10 min
+            </button>
+            <button type="button" className="secondary" onClick={onDismissReminderAlert}>
+              Dismiss
+            </button>
+          </div>
         </section>
       ) : null}
       <main className="content">{children}</main>
@@ -1255,6 +1261,7 @@ export default function App() {
   const [reminders, setReminders] = useState(defaultReminders);
   const [reminderAlert, setReminderAlert] = useState(null);
   const [triggeredReminderKeys, setTriggeredReminderKeys] = useState([]);
+  const [snoozeUntil, setSnoozeUntil] = useState(null);
   const [notificationPermission, setNotificationPermission] = useState(() =>
     getNotificationPermission()
   );
@@ -1309,6 +1316,7 @@ export default function App() {
       setReminderPreferences(defaultReminderPreferences);
       setReminderAlert(null);
       setTriggeredReminderKeys([]);
+      setSnoozeUntil(null);
       setDataReady(false);
       setDataLoading(false);
       return;
@@ -1452,6 +1460,10 @@ export default function App() {
         return;
       }
 
+      if (snoozeUntil !== null && Date.now() < snoozeUntil) {
+        return;
+      }
+
       setTriggeredReminderKeys((currentKeys) => {
         const enabledMatches = reminders.filter((item) => item.enabled && item.time === timeKey);
         const nextKeys = [...currentKeys];
@@ -1517,6 +1529,7 @@ export default function App() {
     reminderPreferences.soundEnabled,
     reminderPreferences.vibrationEnabled,
     reminders,
+    snoozeUntil,
   ]);
 
   useEffect(() => {
@@ -1624,6 +1637,11 @@ export default function App() {
 
   const handleDismissReminderAlert = () => {
     setReminderAlert(null);
+  };
+
+  const handleSnoozeReminderAlert = () => {
+    setReminderAlert(null);
+    setSnoozeUntil(Date.now() + 10 * 60 * 1000);
   };
 
   const handleRequestNotificationPermission = async () => {
@@ -1735,6 +1753,7 @@ export default function App() {
       onSignOut={handleSignOut}
       reminderAlert={reminderAlert}
       onDismissReminderAlert={handleDismissReminderAlert}
+      onSnoozeReminderAlert={handleSnoozeReminderAlert}
     >
       <Routes>
         <Route
