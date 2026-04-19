@@ -29,3 +29,9 @@ game28.dta
 
 # Log files
 warnings.log
+
+# Frontend build output
+node_modules/
+dist/
+.vite/
+npm-debug.log*

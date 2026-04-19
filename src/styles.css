@@ -1,0 +1,157 @@
+:root {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  color: #163029;
+  background:
+    radial-gradient(circle at top left, rgba(255, 214, 153, 0.85), transparent 24%),
+    linear-gradient(160deg, #f7f2e8 0%, #d4efe4 100%);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 56px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.hero-copy,
+.status-card,
+.feature-card,
+.split-panel {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(22, 48, 41, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 16px 40px rgba(44, 86, 67, 0.1);
+}
+
+.hero-copy {
+  padding: 32px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.76rem;
+  color: #7b5b2e;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 0.96;
+  margin-bottom: 16px;
+}
+
+.hero-text {
+  font-size: 1.05rem;
+  max-width: 58ch;
+  margin-bottom: 24px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hero-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 20px;
+  background: #1d6b57;
+  color: #fff9ef;
+  cursor: pointer;
+}
+
+.hero-actions .secondary {
+  background: #f1e7d6;
+  color: #163029;
+}
+
+.status-card {
+  padding: 28px;
+}
+
+.status-card ul,
+.steps-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.section-grid {
+  margin-top: 28px;
+}
+
+.section-heading {
+  margin-bottom: 16px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.feature-card {
+  padding: 24px;
+}
+
+.split-panel {
+  margin-top: 28px;
+  padding: 28px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+}
+
+@media (max-width: 860px) {
+  .hero,
+  .card-grid,
+  .split-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .page-shell {
+    padding: 20px 16px 40px;
+  }
+
+  .hero-copy,
+  .status-card,
+  .feature-card,
+  .split-panel {
+    border-radius: 20px;
+  }
+}
