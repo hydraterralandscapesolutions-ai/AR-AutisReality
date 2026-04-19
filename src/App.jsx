@@ -34,6 +34,9 @@ const defaultCompletionHistory = [];
 const defaultClaimedBadges = [];
 const defaultReminders = [];
 const defaultChildren = [];
+const defaultRewardPointsByChild = {};
+const defaultRewardMessageByChild = {};
+const defaultRegulationIndexByChild = {};
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const allDays = [0, 1, 2, 3, 4, 5, 6];
 const defaultReminderPreferences = {
@@ -77,6 +80,42 @@ function normalizeTasks(value) {
 
 function normalizeRegulationIndex(value) {
   return value >= 0 && value < regulationTools.length ? value : defaultRegulationIndex;
+}
+
+function normalizeRewardPointsByChild(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaultRewardPointsByChild;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, points]) => typeof key === 'string' && Number.isFinite(points) && points >= 0)
+      .map(([key, points]) => [key, Number(points)])
+  );
+}
+
+function normalizeRewardMessageByChild(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaultRewardMessageByChild;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, message]) => typeof key === 'string' && typeof message === 'string')
+      .map(([key, message]) => [key, message])
+  );
+}
+
+function normalizeRegulationIndexByChild(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaultRegulationIndexByChild;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, index]) => typeof key === 'string' && Number.isFinite(index))
+      .map(([key, index]) => [key, normalizeRegulationIndex(Number(index))])
+  );
 }
 
 function normalizeCompletionHistory(value) {
@@ -845,47 +884,192 @@ function GamesPage({ gameProgress, onPlayGame }) {
   );
 }
 
-function RewardsPage({ points, setPoints, message, setMessage }) {
+function RewardsPage({
+  points,
+  setPoints,
+  message,
+  setMessage,
+  children,
+  pointsByChild,
+  setPointsByChild,
+  messageByChild,
+  setMessageByChild,
+}) {
+  const [selectedScope, setSelectedScope] = useState(children.length > 0 ? children[0].id : 'shared');
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setSelectedScope('shared');
+      return;
+    }
+
+    if (selectedScope === 'shared') {
+      return;
+    }
+
+    if (!children.some((child) => child.id === selectedScope)) {
+      setSelectedScope(children[0].id);
+    }
+  }, [children, selectedScope]);
+
+  const scopedPoints =
+    selectedScope === 'shared'
+      ? points
+      : (pointsByChild[selectedScope] ?? defaultRewardPoints);
+
+  const scopedMessage =
+    selectedScope === 'shared'
+      ? message
+      : (messageByChild[selectedScope] ?? defaultRewardMessage);
+
+  const setScopedPoints = (next) => {
+    if (selectedScope === 'shared') {
+      setPoints(next);
+      return;
+    }
+
+    setPointsByChild((current) => {
+      const currentValue = current[selectedScope] ?? defaultRewardPoints;
+      const resolved = typeof next === 'function' ? next(currentValue) : next;
+      return { ...current, [selectedScope]: Math.max(0, resolved) };
+    });
+  };
+
+  const setScopedMessage = (nextMessage) => {
+    if (selectedScope === 'shared') {
+      setMessage(nextMessage);
+      return;
+    }
+
+    setMessageByChild((current) => ({
+      ...current,
+      [selectedScope]: nextMessage,
+    }));
+  };
 
   const awardPoints = () => {
-    setPoints((value) => value + 2);
-    setMessage('Nice work. Reward progress recorded.');
+    setScopedPoints((value) => value + 2);
+    setScopedMessage('Nice work. Reward progress recorded.');
   };
 
   const redeem = () => {
-    if (points < 10) {
-      setMessage('Not enough points yet. Keep building streaks.');
+    if (scopedPoints < 10) {
+      setScopedMessage('Not enough points yet. Keep building streaks.');
       return;
     }
-    setPoints((value) => value - 10);
-    setMessage('Reward redeemed: choose a family celebration activity.');
+    setScopedPoints((value) => value - 10);
+    setScopedMessage('Reward redeemed: choose a family celebration activity.');
   };
 
   return (
     <section className="single-panel">
       <p className="eyebrow">Rewards Center</p>
       <h2>Motivation tracker</h2>
-      <p className="metric">Current points: {points}</p>
+      {children.length > 0 && (
+        <div className="child-selector" role="tablist" aria-label="Select reward scope">
+          <button
+            type="button"
+            className={selectedScope === 'shared' ? '' : 'secondary'}
+            onClick={() => setSelectedScope('shared')}
+            role="tab"
+            aria-selected={selectedScope === 'shared'}
+          >
+            Shared
+          </button>
+          {children.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              className={selectedScope === child.id ? '' : 'secondary'}
+              onClick={() => setSelectedScope(child.id)}
+              role="tab"
+              aria-selected={selectedScope === child.id}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="metric">Current points: {scopedPoints}</p>
       <div className="action-row">
         <button type="button" onClick={awardPoints}>+2 points</button>
         <button type="button" className="secondary" onClick={redeem}>Redeem 10 points</button>
       </div>
-      <p className="muted">{message}</p>
+      <p className="muted">{scopedMessage}</p>
     </section>
   );
 }
 
-function RegulationPage({ index, setIndex }) {
+function RegulationPage({ index, setIndex, children, indexByChild, setIndexByChild }) {
+  const [selectedScope, setSelectedScope] = useState(children.length > 0 ? children[0].id : 'shared');
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setSelectedScope('shared');
+      return;
+    }
+
+    if (selectedScope === 'shared') {
+      return;
+    }
+
+    if (!children.some((child) => child.id === selectedScope)) {
+      setSelectedScope(children[0].id);
+    }
+  }, [children, selectedScope]);
+
+  const scopedIndex =
+    selectedScope === 'shared'
+      ? index
+      : (indexByChild[selectedScope] ?? defaultRegulationIndex);
+
+  const setScopedIndex = (next) => {
+    if (selectedScope === 'shared') {
+      setIndex(next);
+      return;
+    }
+
+    setIndexByChild((current) => {
+      const currentValue = current[selectedScope] ?? defaultRegulationIndex;
+      const resolved = typeof next === 'function' ? next(currentValue) : next;
+      return { ...current, [selectedScope]: normalizeRegulationIndex(resolved) };
+    });
+  };
 
   const nextTool = () => {
-    setIndex((value) => (value + 1) % regulationTools.length);
+    setScopedIndex((value) => (value + 1) % regulationTools.length);
   };
 
   return (
     <section className="single-panel">
       <p className="eyebrow">Regulation Toolkit</p>
       <h2>Current strategy</h2>
-      <p className="metric">{regulationTools[index]}</p>
+      {children.length > 0 && (
+        <div className="child-selector" role="tablist" aria-label="Select regulation scope">
+          <button
+            type="button"
+            className={selectedScope === 'shared' ? '' : 'secondary'}
+            onClick={() => setSelectedScope('shared')}
+            role="tab"
+            aria-selected={selectedScope === 'shared'}
+          >
+            Shared
+          </button>
+          {children.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              className={selectedScope === child.id ? '' : 'secondary'}
+              onClick={() => setSelectedScope(child.id)}
+              role="tab"
+              aria-selected={selectedScope === child.id}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="metric">{regulationTools[scopedIndex]}</p>
       <button type="button" onClick={nextTool}>Try another strategy</button>
       <div className="note-box">
         <h3>How to use</h3>
@@ -1268,19 +1452,53 @@ function RemindersPage({
   );
 }
 
-function AchievementsPage({ completionHistory, gameProgress, rewardPoints, claimedBadges, setClaimedBadges }) {
+function AchievementsPage({
+  completionHistory,
+  gameProgress,
+  rewardPoints,
+  rewardPointsByChild,
+  claimedBadges,
+  setClaimedBadges,
+  children,
+}) {
+  const [selectedScope, setSelectedScope] = useState(children.length > 0 ? children[0].id : 'shared');
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setSelectedScope('shared');
+      return;
+    }
+
+    if (selectedScope === 'shared') {
+      return;
+    }
+
+    if (!children.some((child) => child.id === selectedScope)) {
+      setSelectedScope(children[0].id);
+    }
+  }, [children, selectedScope]);
+
+  const scopedHistory = completionHistory.filter((entry) =>
+    selectedScope === 'shared' ? !entry.childId : entry.childId === selectedScope
+  );
+
+  const scopedRewardPoints =
+    selectedScope === 'shared'
+      ? rewardPoints
+      : (rewardPointsByChild[selectedScope] ?? defaultRewardPoints);
+
   const totalGameSessions = gameProgress.reduce((sum, entry) => sum + entry.sessions, 0);
   const averageCompletion =
-    completionHistory.length > 0
+    scopedHistory.length > 0
       ? Math.round(
-          completionHistory.reduce((sum, entry) => sum + entry.completionRate, 0) /
-            completionHistory.length
+          scopedHistory.reduce((sum, entry) => sum + entry.completionRate, 0) /
+            scopedHistory.length
         )
       : 0;
 
   let streak = 0;
-  for (let i = completionHistory.length - 1; i >= 0; i -= 1) {
-    if (completionHistory[i].completionRate >= 80) {
+  for (let i = scopedHistory.length - 1; i >= 0; i -= 1) {
+    if (scopedHistory[i].completionRate >= 80) {
       streak += 1;
     } else {
       break;
@@ -1292,7 +1510,7 @@ function AchievementsPage({ completionHistory, gameProgress, rewardPoints, claim
       id: 'first-progress-log',
       title: 'First Progress Log',
       description: 'Record your first daily completion snapshot.',
-      unlocked: completionHistory.length >= 1,
+      unlocked: scopedHistory.length >= 1,
     },
     {
       id: 'streak-3',
@@ -1310,7 +1528,7 @@ function AchievementsPage({ completionHistory, gameProgress, rewardPoints, claim
       id: 'points-builder',
       title: 'Points Builder',
       description: 'Reach 30 reward points.',
-      unlocked: rewardPoints >= 30,
+      unlocked: scopedRewardPoints >= 30,
     },
     {
       id: 'steady-progress',
@@ -1336,6 +1554,31 @@ function AchievementsPage({ completionHistory, gameProgress, rewardPoints, claim
       <p className="eyebrow">Achievements</p>
       <h2>Milestones and family wins</h2>
       <p className="muted">Track unlocked milestones and claim badges as progress grows.</p>
+      {children.length > 0 && (
+        <div className="child-selector" role="tablist" aria-label="Select achievement scope">
+          <button
+            type="button"
+            className={selectedScope === 'shared' ? '' : 'secondary'}
+            onClick={() => setSelectedScope('shared')}
+            role="tab"
+            aria-selected={selectedScope === 'shared'}
+          >
+            Shared
+          </button>
+          {children.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              className={selectedScope === child.id ? '' : 'secondary'}
+              onClick={() => setSelectedScope(child.id)}
+              role="tab"
+              aria-selected={selectedScope === child.id}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="metric">Claimed badges: {claimedCount}</p>
 
       <div className="achievement-grid">
@@ -1685,6 +1928,9 @@ export default function App() {
   const [reminderPreferences, setReminderPreferences] = useState(defaultReminderPreferences);
   const [displayName, setDisplayName] = useState('');
   const [children, setChildren] = useState(defaultChildren);
+  const [rewardPointsByChild, setRewardPointsByChild] = useState(defaultRewardPointsByChild);
+  const [rewardMessageByChild, setRewardMessageByChild] = useState(defaultRewardMessageByChild);
+  const [regulationIndexByChild, setRegulationIndexByChild] = useState(defaultRegulationIndexByChild);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1735,6 +1981,9 @@ export default function App() {
       setReminderPreferences(defaultReminderPreferences);
       setDisplayName('');
       setChildren(defaultChildren);
+      setRewardPointsByChild(defaultRewardPointsByChild);
+      setRewardMessageByChild(defaultRewardMessageByChild);
+      setRegulationIndexByChild(defaultRegulationIndexByChild);
       setReminderAlert(null);
       setTriggeredReminderKeys([]);
       setSnoozeUntil(null);
@@ -1750,7 +1999,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name,children')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences,display_name,children,reward_points_by_child,reward_message_by_child,regulation_index_by_child')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -1785,6 +2034,9 @@ export default function App() {
           completion_history: defaultCompletionHistory,
           reminders: defaultReminders,
           reminder_preferences: defaultReminderPreferences,
+          reward_points_by_child: defaultRewardPointsByChild,
+          reward_message_by_child: defaultRewardMessageByChild,
+          regulation_index_by_child: defaultRegulationIndexByChild,
         });
 
         if (!active) {
@@ -1808,6 +2060,9 @@ export default function App() {
         setReminderPreferences(defaultReminderPreferences);
         setDisplayName('');
         setChildren(defaultChildren);
+        setRewardPointsByChild(defaultRewardPointsByChild);
+        setRewardMessageByChild(defaultRewardMessageByChild);
+        setRegulationIndexByChild(defaultRegulationIndexByChild);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -1824,6 +2079,9 @@ export default function App() {
       setReminderPreferences(normalizeReminderPreferences(data.reminder_preferences));
       setDisplayName(typeof data.display_name === 'string' ? data.display_name : '');
       setChildren(normalizeChildren(data.children));
+      setRewardPointsByChild(normalizeRewardPointsByChild(data.reward_points_by_child));
+      setRewardMessageByChild(normalizeRewardMessageByChild(data.reward_message_by_child));
+      setRegulationIndexByChild(normalizeRegulationIndexByChild(data.regulation_index_by_child));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -1852,6 +2110,9 @@ export default function App() {
       reminder_preferences: reminderPreferences,
       display_name: displayName,
       children,
+      reward_points_by_child: rewardPointsByChild,
+      reward_message_by_child: rewardMessageByChild,
+      regulation_index_by_child: regulationIndexByChild,
     });
   }, [
     children,
@@ -1866,6 +2127,9 @@ export default function App() {
     regulationIndex,
     rewardMessage,
     rewardPoints,
+    rewardMessageByChild,
+    rewardPointsByChild,
+    regulationIndexByChild,
     user?.id,
   ]);
 
@@ -2332,6 +2596,11 @@ export default function App() {
                 setPoints={setRewardPoints}
                 message={rewardMessage}
                 setMessage={setRewardMessage}
+                children={children}
+                pointsByChild={rewardPointsByChild}
+                setPointsByChild={setRewardPointsByChild}
+                messageByChild={rewardMessageByChild}
+                setMessageByChild={setRewardMessageByChild}
               />
             </ProtectedRoute>
           }
@@ -2348,7 +2617,13 @@ export default function App() {
               requireVerified
               isEmailVerified={isEmailVerified}
             >
-              <RegulationPage index={regulationIndex} setIndex={setRegulationIndex} />
+              <RegulationPage
+                index={regulationIndex}
+                setIndex={setRegulationIndex}
+                children={children}
+                indexByChild={regulationIndexByChild}
+                setIndexByChild={setRegulationIndexByChild}
+              />
             </ProtectedRoute>
           }
         />
@@ -2368,8 +2643,10 @@ export default function App() {
                 completionHistory={completionHistory}
                 gameProgress={gameProgress}
                 rewardPoints={rewardPoints}
+                rewardPointsByChild={rewardPointsByChild}
                 claimedBadges={claimedBadges}
                 setClaimedBadges={setClaimedBadges}
+                children={children}
               />
             </ProtectedRoute>
           }
