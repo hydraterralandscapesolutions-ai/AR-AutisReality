@@ -306,6 +306,18 @@ button {
   margin: 8px 0 12px;
 }
 
+.notification-options {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.notification-options label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 @media (max-width: 900px) {
   .topbar,
   .panel-grid,

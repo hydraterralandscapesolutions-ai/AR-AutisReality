@@ -19,8 +19,10 @@ Role notes:
 - Parent completion history analytics are stored per user in `public.user_app_state.completion_history`.
 - Claimed achievements are stored per user in `public.user_app_state.claimed_badges`.
 - Reminder schedules are stored per user in `public.user_app_state.reminders`.
+- Reminder alert preferences are stored per user in `public.user_app_state.reminder_preferences`.
 - Enabled reminders trigger an in-app alert banner at the scheduled local time (once per reminder per minute).
 - Optional browser-level notifications can be enabled from the Reminders page using the browser permission prompt.
+- Optional in-app sound and device vibration can be configured in the Reminders page.
 - Admin dashboard can load multi-user aggregates via `public.admin_dashboard_summary()`.
 - Game progress is stored per user in `public.user_game_progress`.
 

@@ -7,6 +7,7 @@ create table if not exists public.user_app_state (
   completion_history jsonb not null default '[]'::jsonb,
   claimed_badges jsonb not null default '[]'::jsonb,
   reminders jsonb not null default '[]'::jsonb,
+  reminder_preferences jsonb not null default '{"soundEnabled": true, "vibrationEnabled": false}'::jsonb,
   updated_at timestamptz not null default now()
 );
 

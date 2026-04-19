@@ -33,6 +33,10 @@ const defaultRegulationIndex = 0;
 const defaultCompletionHistory = [];
 const defaultClaimedBadges = [];
 const defaultReminders = [];
+const defaultReminderPreferences = {
+  soundEnabled: true,
+  vibrationEnabled: false,
+};
 
 const defaultTasks = [
   { id: 1, label: 'Morning checklist prepared', done: true },
@@ -138,6 +142,58 @@ function getNotificationPermission() {
     return 'unsupported';
   }
   return window.Notification.permission;
+}
+
+function normalizeReminderPreferences(value) {
+  if (!value || typeof value !== 'object') {
+    return defaultReminderPreferences;
+  }
+
+  return {
+    soundEnabled:
+      typeof value.soundEnabled === 'boolean'
+        ? value.soundEnabled
+        : defaultReminderPreferences.soundEnabled,
+    vibrationEnabled:
+      typeof value.vibrationEnabled === 'boolean'
+        ? value.vibrationEnabled
+        : defaultReminderPreferences.vibrationEnabled,
+  };
+}
+
+function playReminderTone() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const AudioContextType = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextType) {
+    return;
+  }
+
+  try {
+    const context = new AudioContextType();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, context.currentTime);
+    gainNode.gain.setValueAtTime(0.0001, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.2, context.currentTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.25);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.25);
+
+    oscillator.onended = () => {
+      context.close();
+    };
+  } catch {
+    // Ignore tone failures and continue with visual/browser notifications.
+  }
 }
 
 function AppShell({
@@ -691,6 +747,8 @@ function RemindersPage({
   setReminders,
   notificationPermission,
   onRequestNotificationPermission,
+  reminderPreferences,
+  onUpdateReminderPreferences,
 }) {
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('08:00');
@@ -749,6 +807,34 @@ function RemindersPage({
         >
           Enable browser notifications
         </button>
+      </div>
+      <div className="notification-options" aria-label="Reminder alert options">
+        <label>
+          <input
+            type="checkbox"
+            checked={reminderPreferences.soundEnabled}
+            onChange={(event) =>
+              onUpdateReminderPreferences({ soundEnabled: event.target.checked })
+            }
+          />
+          <span>Play in-app reminder sound</span>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={reminderPreferences.vibrationEnabled}
+            onChange={(event) =>
+              onUpdateReminderPreferences({ vibrationEnabled: event.target.checked })
+            }
+            disabled={typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function'}
+          />
+          <span>
+            Vibrate supported devices
+            {typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function'
+              ? ' (unsupported in this browser)'
+              : ''}
+          </span>
+        </label>
       </div>
 
       <form className="login-form" onSubmit={addReminder}>
@@ -1097,6 +1183,7 @@ export default function App() {
   const [notificationPermission, setNotificationPermission] = useState(() =>
     getNotificationPermission()
   );
+  const [reminderPreferences, setReminderPreferences] = useState(defaultReminderPreferences);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -1144,6 +1231,7 @@ export default function App() {
       setGameProgress(defaultGameProgress);
       setClaimedBadges(defaultClaimedBadges);
       setReminders(defaultReminders);
+      setReminderPreferences(defaultReminderPreferences);
       setReminderAlert(null);
       setTriggeredReminderKeys([]);
       setDataReady(false);
@@ -1158,7 +1246,7 @@ export default function App() {
 
       const { data, error } = await supabase
         .from('user_app_state')
-        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders')
+        .select('parent_tasks,reward_points,reward_message,regulation_index,completion_history,claimed_badges,reminders,reminder_preferences')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -1192,6 +1280,7 @@ export default function App() {
           regulation_index: defaultRegulationIndex,
           completion_history: defaultCompletionHistory,
           reminders: defaultReminders,
+          reminder_preferences: defaultReminderPreferences,
         });
 
         if (!active) {
@@ -1212,6 +1301,7 @@ export default function App() {
         setGameProgress(normalizeGameProgress(gameData));
         setClaimedBadges(defaultClaimedBadges);
         setReminders(defaultReminders);
+        setReminderPreferences(defaultReminderPreferences);
         setDataReady(true);
         setDataLoading(false);
         return;
@@ -1225,6 +1315,7 @@ export default function App() {
       setGameProgress(normalizeGameProgress(gameData));
       setClaimedBadges(normalizeClaimedBadges(data.claimed_badges));
       setReminders(normalizeReminders(data.reminders));
+      setReminderPreferences(normalizeReminderPreferences(data.reminder_preferences));
       setDataReady(true);
       setDataLoading(false);
     };
@@ -1250,6 +1341,7 @@ export default function App() {
       completion_history: completionHistory,
       claimed_badges: claimedBadges,
       reminders,
+      reminder_preferences: reminderPreferences,
     });
   }, [
     claimedBadges,
@@ -1258,6 +1350,7 @@ export default function App() {
     isAuthenticated,
     parentTasks,
     reminders,
+    reminderPreferences,
     regulationIndex,
     rewardMessage,
     rewardPoints,
@@ -1301,6 +1394,18 @@ export default function App() {
       if (nextAlert) {
         setReminderAlert(nextAlert);
 
+        if (reminderPreferences.soundEnabled) {
+          playReminderTone();
+        }
+
+        if (
+          reminderPreferences.vibrationEnabled &&
+          typeof navigator !== 'undefined' &&
+          typeof navigator.vibrate === 'function'
+        ) {
+          navigator.vibrate([120, 80, 120]);
+        }
+
         if (notificationPermission === 'granted' && typeof window !== 'undefined' && 'Notification' in window) {
           try {
             new window.Notification(`Reminder: ${nextAlert.label}`, {
@@ -1320,7 +1425,14 @@ export default function App() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [dataReady, isAuthenticated, notificationPermission, reminders]);
+  }, [
+    dataReady,
+    isAuthenticated,
+    notificationPermission,
+    reminderPreferences.soundEnabled,
+    reminderPreferences.vibrationEnabled,
+    reminders,
+  ]);
 
   useEffect(() => {
     if (!reminderAlert) {
@@ -1437,6 +1549,13 @@ export default function App() {
 
     const result = await window.Notification.requestPermission();
     setNotificationPermission(result);
+  };
+
+  const handleUpdateReminderPreferences = (updates) => {
+    setReminderPreferences((current) => ({
+      ...current,
+      ...updates,
+    }));
   };
 
   const handleRequestPasswordReset = async (email) => {
@@ -1710,6 +1829,8 @@ export default function App() {
                 setReminders={setReminders}
                 notificationPermission={notificationPermission}
                 onRequestNotificationPermission={handleRequestNotificationPermission}
+                reminderPreferences={reminderPreferences}
+                onUpdateReminderPreferences={handleUpdateReminderPreferences}
               />
             </ProtectedRoute>
           }
