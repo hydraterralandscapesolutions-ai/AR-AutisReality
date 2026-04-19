@@ -23,6 +23,23 @@ Password and verification notes:
 - Login includes resend-verification and forgot-password actions.
 - Password reset completes on the `/reset-password` route from the email link.
 
+## Deployment (GitHub Pages)
+
+This repo includes `.github/workflows/deploy-pages.yml` to deploy on pushes to `main`.
+
+Required repository secrets:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+GitHub setup:
+1. In repository settings, set Pages source to GitHub Actions.
+2. Add the two secrets above in repository secrets.
+3. Push to `main` and wait for the `Deploy to GitHub Pages` workflow.
+
+Supabase redirect URLs should include:
+- `https://hydraterralandscapesolutions-ai.github.io/AR-AutisReality/`
+- `https://hydraterralandscapesolutions-ai.github.io/AR-AutisReality/#/reset-password`
+
 ## Local development
 
 - `npm install`

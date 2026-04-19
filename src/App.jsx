@@ -822,7 +822,7 @@ export default function App() {
     setIsSubmitting(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/#/reset-password`,
     });
 
     if (error) {
@@ -851,7 +851,7 @@ export default function App() {
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}/#/`,
       },
     });
 
