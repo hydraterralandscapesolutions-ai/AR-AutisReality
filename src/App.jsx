@@ -804,11 +804,13 @@ function RemindersPage({
   const [time, setTime] = useState('08:00');
   const [days, setDays] = useState(allDays);
   const [editingId, setEditingId] = useState(null);
+  const [editLabel, setEditLabel] = useState('');
   const [editTime, setEditTime] = useState('08:00');
   const [editDays, setEditDays] = useState(allDays);
 
   const startEdit = (item) => {
     setEditingId(item.id);
+    setEditLabel(item.label);
     setEditTime(item.time);
     setEditDays(item.days ?? allDays);
   };
@@ -816,9 +818,13 @@ function RemindersPage({
   const cancelEdit = () => setEditingId(null);
 
   const saveEdit = (id) => {
+    const trimmed = editLabel.trim();
+    if (!trimmed) return;
     setReminders((current) =>
       current.map((item) =>
-        item.id === id ? { ...item, time: editTime, days: editDays.length > 0 ? editDays : allDays } : item
+        item.id === id
+          ? { ...item, label: trimmed, time: editTime, days: editDays.length > 0 ? editDays : allDays }
+          : item
       )
     );
     setEditingId(null);
@@ -1026,9 +1032,18 @@ function RemindersPage({
             <article key={item.id} className="reminder-card">
               <div>
                 <p className="eyebrow">{item.enabled ? 'Enabled' : 'Paused'}</p>
-                <h3>{item.label}</h3>
+                {editingId !== item.id && <h3>{item.label}</h3>}
                 {editingId === item.id ? (
                   <div className="reminder-edit-panel">
+                    <label htmlFor={`editLabel-${item.id}`}>Label</label>
+                    <input
+                      id={`editLabel-${item.id}`}
+                      type="text"
+                      value={editLabel}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                      className="reminder-edit-input"
+                      maxLength={80}
+                    />
                     <label htmlFor={`editTime-${item.id}`}>Time</label>
                     <input
                       id={`editTime-${item.id}`}
