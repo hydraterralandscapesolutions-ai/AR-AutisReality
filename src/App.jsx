@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { hasSupabaseConfig, supabase } from './lib/supabaseClient';
 
 const gameLibrary = [
@@ -29,6 +29,10 @@ function deriveRole(user) {
   return user?.user_metadata?.role === 'admin' ? 'admin' : 'parent';
 }
 
+function isUserEmailVerified(user) {
+  return Boolean(user?.email_confirmed_at);
+}
+
 function normalizeTasks(value) {
   if (!Array.isArray(value)) {
     return defaultTasks;
@@ -46,7 +50,7 @@ function normalizeRegulationIndex(value) {
   return value >= 0 && value < regulationTools.length ? value : defaultRegulationIndex;
 }
 
-function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
+function AppShell({ children, isAuthenticated, isEmailVerified, profileName, role, onSignOut }) {
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -74,6 +78,7 @@ function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
           {isAuthenticated ? (
             <>
               <span>{profileName} ({role})</span>
+              <span className="status-pill">{isEmailVerified ? 'Verified' : 'Not verified'}</span>
               <button type="button" className="secondary" onClick={onSignOut}>Sign out</button>
             </>
           ) : (
@@ -86,7 +91,16 @@ function AppShell({ children, isAuthenticated, profileName, role, onSignOut }) {
   );
 }
 
-function ProtectedRoute({ isAuthenticated, authLoading, dataLoading, role, allowedRoles, children }) {
+function ProtectedRoute({
+  isAuthenticated,
+  authLoading,
+  dataLoading,
+  role,
+  allowedRoles,
+  requireVerified,
+  isEmailVerified,
+  children,
+}) {
   const location = useLocation();
 
   if (authLoading || dataLoading) {
@@ -102,6 +116,10 @@ function ProtectedRoute({ isAuthenticated, authLoading, dataLoading, role, allow
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
+  if (requireVerified && !isEmailVerified) {
+    return <Navigate to="/verify-email" replace state={{ from: location.pathname }} />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(role)) {
     return <Navigate to="/unauthorized" replace state={{ from: location.pathname }} />;
   }
@@ -109,7 +127,16 @@ function ProtectedRoute({ isAuthenticated, authLoading, dataLoading, role, allow
   return children;
 }
 
-function LoginPage({ isSupabaseReady, onSignIn, onSignUp, authError, authInfo, isSubmitting }) {
+function LoginPage({
+  isSupabaseReady,
+  onSignIn,
+  onSignUp,
+  onRequestPasswordReset,
+  onResendVerification,
+  authError,
+  authInfo,
+  isSubmitting,
+}) {
   const location = useLocation();
   const from = location.state?.from ?? '/';
   const [name, setName] = useState('');
@@ -188,6 +215,24 @@ function LoginPage({ isSupabaseReady, onSignIn, onSignUp, authError, authInfo, i
           {isSubmitting ? 'Please wait...' : mode === 'signup' ? 'Create account' : 'Sign in'}
         </button>
       </form>
+      <div className="inline-actions">
+        <button
+          type="button"
+          className="secondary"
+          disabled={!isSupabaseReady || isSubmitting}
+          onClick={() => onRequestPasswordReset(email.trim())}
+        >
+          Forgot password
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          disabled={!isSupabaseReady || isSubmitting}
+          onClick={() => onResendVerification(email.trim())}
+        >
+          Resend verification email
+        </button>
+      </div>
       <form className="login-mode" onSubmit={(event) => event.preventDefault()}>
         <button
           type="button"
@@ -202,6 +247,91 @@ function LoginPage({ isSupabaseReady, onSignIn, onSignUp, authError, authInfo, i
           onClick={() => setMode('signup')}
         >
           New account
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function VerifyEmailPage({ email, onResendVerification, isSubmitting, authInfo, authError }) {
+  const location = useLocation();
+  const from = location.state?.from ?? '/';
+
+  return (
+    <section className="single-panel login-panel">
+      <p className="eyebrow">Email Verification</p>
+      <h2>Verify your email to continue</h2>
+      <p className="muted">Your account must be verified before opening {from}.</p>
+      <p className="muted">Current email: {email || 'Not available'}</p>
+      {authInfo ? <p className="muted">{authInfo}</p> : null}
+      {authError ? <p className="muted">{authError}</p> : null}
+      <button
+        type="button"
+        disabled={isSubmitting || !email}
+        onClick={() => onResendVerification(email)}
+      >
+        {isSubmitting ? 'Please wait...' : 'Resend verification email'}
+      </button>
+    </section>
+  );
+}
+
+function ResetPasswordPage({ isAuthenticated, onUpdatePassword, authInfo, authError, isSubmitting }) {
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState('');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (password.length < 6) {
+      setLocalError('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setLocalError('Passwords do not match.');
+      return;
+    }
+    setLocalError('');
+    const succeeded = await onUpdatePassword(password);
+    if (succeeded) {
+      navigate('/', { replace: true });
+    }
+  };
+
+  return (
+    <section className="single-panel login-panel">
+      <p className="eyebrow">Password Recovery</p>
+      <h2>Set a new password</h2>
+      <p className="muted">
+        {isAuthenticated
+          ? 'Enter a new password for your account.'
+          : 'Open this page from the password reset email link after requesting a reset.'}
+      </p>
+      {authInfo ? <p className="muted">{authInfo}</p> : null}
+      {authError ? <p className="muted">{authError}</p> : null}
+      {localError ? <p className="muted">{localError}</p> : null}
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label htmlFor="newPassword">New password</label>
+        <input
+          id="newPassword"
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          minLength={6}
+          required
+        />
+        <label htmlFor="confirmPassword">Confirm new password</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          minLength={6}
+          required
+        />
+        <button type="submit" disabled={!isAuthenticated || isSubmitting}>
+          {isSubmitting ? 'Please wait...' : 'Update password'}
         </button>
       </form>
     </section>
@@ -416,6 +546,9 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
+      if (_event === 'PASSWORD_RECOVERY') {
+        setAuthInfo('Password recovery session started. Set your new password now.');
+      }
     });
 
     return () => {
@@ -565,7 +698,7 @@ export default function App() {
     if (error) {
       setAuthError(error.message);
     } else {
-      setAuthInfo('Account created. Check your email for confirmation if required.');
+      setAuthInfo('Account created. Check your email to verify your account before signing in.');
     }
 
     setIsSubmitting(false);
@@ -578,13 +711,93 @@ export default function App() {
     await supabase.auth.signOut();
   };
 
+  const handleRequestPasswordReset = async (email) => {
+    if (!supabase) {
+      return;
+    }
+    if (!email) {
+      setAuthError('Enter your email first, then request a password reset.');
+      return;
+    }
+
+    setAuthError('');
+    setAuthInfo('');
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthInfo('Password reset email sent. Open the link in your inbox.');
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const handleResendVerification = async (email) => {
+    if (!supabase) {
+      return;
+    }
+    if (!email) {
+      setAuthError('Enter your email first, then resend verification.');
+      return;
+    }
+
+    setAuthError('');
+    setAuthInfo('');
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthInfo('Verification email sent. Check your inbox.');
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const handleUpdatePassword = async (password) => {
+    if (!supabase) {
+      return false;
+    }
+
+    setAuthError('');
+    setAuthInfo('');
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      setAuthError(error.message);
+      setIsSubmitting(false);
+      return false;
+    }
+
+    setAuthInfo('Password updated successfully.');
+    setIsSubmitting(false);
+    return true;
+  };
+
   const role = deriveRole(user);
+  const isEmailVerified = isUserEmailVerified(user);
   const profileName = user?.user_metadata?.full_name || user?.email || 'Account';
   const isAuthenticated = Boolean(user);
 
   return (
     <AppShell
       isAuthenticated={isAuthenticated}
+      isEmailVerified={isEmailVerified}
       profileName={profileName}
       role={role}
       onSignOut={handleSignOut}
@@ -600,11 +813,43 @@ export default function App() {
                 isSupabaseReady={hasSupabaseConfig}
                 onSignIn={handleSignIn}
                 onSignUp={handleSignUp}
+                onRequestPasswordReset={handleRequestPasswordReset}
+                onResendVerification={handleResendVerification}
                 authError={authError}
                 authInfo={authInfo}
                 isSubmitting={isSubmitting}
               />
             )
+          }
+        />
+        <Route
+          path="/verify-email"
+          element={
+            !isAuthenticated ? (
+              <Navigate to="/login" replace />
+            ) : isEmailVerified ? (
+              <Navigate to="/" replace />
+            ) : (
+              <VerifyEmailPage
+                email={user?.email || ''}
+                onResendVerification={handleResendVerification}
+                isSubmitting={isSubmitting}
+                authInfo={authInfo}
+                authError={authError}
+              />
+            )
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <ResetPasswordPage
+              isAuthenticated={isAuthenticated}
+              onUpdatePassword={handleUpdatePassword}
+              authInfo={authInfo}
+              authError={authError}
+              isSubmitting={isSubmitting}
+            />
           }
         />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -616,6 +861,8 @@ export default function App() {
               authLoading={authLoading}
               dataLoading={dataLoading}
               role={role}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <HomePage />
             </ProtectedRoute>
@@ -630,6 +877,8 @@ export default function App() {
               dataLoading={dataLoading}
               role={role}
               allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <ParentsPage tasks={parentTasks} setTasks={setParentTasks} />
             </ProtectedRoute>
@@ -643,6 +892,8 @@ export default function App() {
               authLoading={authLoading}
               dataLoading={dataLoading}
               role={role}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <GamesPage />
             </ProtectedRoute>
@@ -657,6 +908,8 @@ export default function App() {
               dataLoading={dataLoading}
               role={role}
               allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <RewardsPage
                 points={rewardPoints}
@@ -676,6 +929,8 @@ export default function App() {
               dataLoading={dataLoading}
               role={role}
               allowedRoles={['parent', 'admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <RegulationPage index={regulationIndex} setIndex={setRegulationIndex} />
             </ProtectedRoute>
@@ -690,6 +945,8 @@ export default function App() {
               dataLoading={dataLoading}
               role={role}
               allowedRoles={['admin']}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <AdminPage />
             </ProtectedRoute>
@@ -703,6 +960,8 @@ export default function App() {
               authLoading={authLoading}
               dataLoading={dataLoading}
               role={role}
+              requireVerified
+              isEmailVerified={isEmailVerified}
             >
               <NotFoundPage />
             </ProtectedRoute>

@@ -177,6 +177,14 @@ button {
   gap: 8px;
 }
 
+.status-pill {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(22, 48, 41, 0.12);
+}
+
 .login-form {
   display: grid;
   gap: 8px;
@@ -195,6 +203,13 @@ button {
   margin-top: 10px;
   display: flex;
   gap: 10px;
+}
+
+.inline-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 900px) {
@@ -233,6 +248,10 @@ button {
   }
 
   .login-mode {
+    flex-direction: column;
+  }
+
+  .inline-actions {
     flex-direction: column;
   }
 }
