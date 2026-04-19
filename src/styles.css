@@ -373,6 +373,18 @@ button {
   color: #7b5b2e;
 }
 
+.day-picker-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.day-picker-shortcuts button {
+  font-size: 0.82rem;
+  padding: 5px 10px;
+}
+
 .day-picker-row {
   display: flex;
   flex-wrap: wrap;

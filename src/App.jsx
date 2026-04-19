@@ -971,6 +971,11 @@ function RemindersPage({
         />
         <fieldset className="day-picker">
           <legend>Repeat on</legend>
+          <div className="day-picker-shortcuts">
+            <button type="button" className="secondary" onClick={() => setDays(allDays)}>Every day</button>
+            <button type="button" className="secondary" onClick={() => setDays([1, 2, 3, 4, 5])}>Weekdays</button>
+            <button type="button" className="secondary" onClick={() => setDays([0, 6])}>Weekends</button>
+          </div>
           <div className="day-picker-row">
             {dayNames.map((name, index) => (
               <label key={name} className="day-label">
