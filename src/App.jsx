@@ -378,8 +378,11 @@ function AppShell({
     <div className="app-shell">
       <header className="topbar">
         <div className="brand-block">
-          <p className="eyebrow">AR AutisReality</p>
-          <h1>Family Support Platform</h1>
+          <img src="/logo.svg" alt="AR AutisReality logo" className="brand-logo" />
+          <div>
+            <p className="eyebrow">AR AutisReality</p>
+            <h1>Family Support Platform</h1>
+          </div>
         </div>
         <nav aria-label="Main navigation" className="topnav">
           {isAuthenticated ? (

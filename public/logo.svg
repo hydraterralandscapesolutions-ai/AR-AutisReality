@@ -1,0 +1,233 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="AR AutisReality logo">
+  <defs>
+    <!-- Background radial gradient (dark navy) -->
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a2454"/>
+      <stop offset="100%" stop-color="#0d1230"/>
+    </radialGradient>
+
+    <!-- Goggle lens gradient -->
+    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff4b6e"/>
+      <stop offset="30%" stop-color="#a855f7"/>
+      <stop offset="60%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+
+    <!-- Rainbow gradient -->
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ff0000"/>
+      <stop offset="16%"  stop-color="#ff8800"/>
+      <stop offset="33%"  stop-color="#ffff00"/>
+      <stop offset="50%"  stop-color="#00cc00"/>
+      <stop offset="66%"  stop-color="#0088ff"/>
+      <stop offset="83%"  stop-color="#8800ff"/>
+      <stop offset="100%" stop-color="#ff0088"/>
+    </linearGradient>
+
+    <!-- "AR" text gradient -->
+    <linearGradient id="arGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#38bdf8"/>
+      <stop offset="50%"  stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <!-- "AUTISTIC REALITY" text gradient -->
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#facc15"/>
+      <stop offset="25%"  stop-color="#4ade80"/>
+      <stop offset="50%"  stop-color="#38bdf8"/>
+      <stop offset="75%"  stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#fb923c"/>
+    </linearGradient>
+
+    <!-- Glow filter for goggles -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle sparkle blur -->
+    <filter id="sparkleGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Tagline pill gradient -->
+    <linearGradient id="pillGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#1a2a5e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+
+  <!-- ── Rainbow arc above goggles ── -->
+  <g opacity="0.9">
+    <!-- Band 1 (outermost red) -->
+    <path d="M 90 230 Q 256 60 422 230" fill="none" stroke="#ff3333" stroke-width="11" stroke-linecap="round"/>
+    <!-- Band 2 orange -->
+    <path d="M 100 235 Q 256 72 412 235" fill="none" stroke="#ff8800" stroke-width="9"  stroke-linecap="round"/>
+    <!-- Band 3 yellow -->
+    <path d="M 110 240 Q 256 84 402 240" fill="none" stroke="#ffee00" stroke-width="8"  stroke-linecap="round"/>
+    <!-- Band 4 green -->
+    <path d="M 120 245 Q 256 96 392 245" fill="none" stroke="#22cc44" stroke-width="7"  stroke-linecap="round"/>
+    <!-- Band 5 blue -->
+    <path d="M 130 250 Q 256 108 382 250" fill="none" stroke="#2299ff" stroke-width="7"  stroke-linecap="round"/>
+    <!-- Band 6 violet -->
+    <path d="M 140 254 Q 256 118 372 254" fill="none" stroke="#9933ff" stroke-width="6"  stroke-linecap="round"/>
+  </g>
+
+  <!-- Cloud left -->
+  <g opacity="0.85" transform="translate(78,208)">
+    <ellipse cx="0"   cy="0" rx="22" ry="14" fill="#c7d2fe"/>
+    <ellipse cx="18"  cy="-8" rx="18" ry="12" fill="#ddd6fe"/>
+    <ellipse cx="36"  cy="0" rx="18" ry="12" fill="#c7d2fe"/>
+  </g>
+
+  <!-- ── Goggles body ── -->
+  <!-- Outer frame -->
+  <rect x="88" y="200" width="336" height="110" rx="36" ry="36" fill="#1e293b" filter="url(#glow)"/>
+  <!-- Left lens -->
+  <rect x="100" y="210" width="140" height="88" rx="24" ry="24" fill="url(#lensGrad)" opacity="0.9"/>
+  <!-- Right lens -->
+  <rect x="272" y="210" width="140" height="88" rx="24" ry="24" fill="url(#lensGrad)" opacity="0.9"/>
+  <!-- Bridge -->
+  <rect x="240" y="233" width="32" height="42" rx="4" fill="#0f172a"/>
+  <!-- Frame border / rim -->
+  <rect x="88" y="200" width="336" height="110" rx="36" ry="36" fill="none" stroke="#94a3b8" stroke-width="4"/>
+  <!-- Strap left -->
+  <rect x="52" y="226" width="36" height="28" rx="10" fill="#334155"/>
+  <!-- Strap right -->
+  <rect x="424" y="226" width="36" height="28" rx="10" fill="#334155"/>
+
+  <!-- Lens sheen / sparkles inside left lens -->
+  <circle cx="140" cy="225" r="4" fill="white" opacity="0.55"/>
+  <circle cx="165" cy="240" r="2.5" fill="white" opacity="0.4"/>
+  <circle cx="120" cy="255" r="3" fill="#facc15" opacity="0.5"/>
+
+  <!-- Lens sheen inside right lens -->
+  <circle cx="370" cy="225" r="4" fill="white" opacity="0.55"/>
+  <circle cx="345" cy="248" r="2.5" fill="white" opacity="0.4"/>
+  <circle cx="395" cy="260" r="3" fill="#4ade80" opacity="0.5"/>
+
+  <!-- ── Puzzle piece (centre of goggles) ── -->
+  <!-- Red piece -->
+  <path d="M 220 230 L 255 230 L 255 252 Q 248 250 245 258 Q 242 266 255 264 L 255 280 L 220 280 L 220 258 Q 213 261 210 254 Q 207 247 220 248 Z"
+        fill="#ef4444" stroke="#0f172a" stroke-width="1.5"/>
+  <!-- Green piece -->
+  <path d="M 255 230 L 292 230 L 292 248 Q 305 247 302 254 Q 299 261 292 258 L 292 280 L 255 280 L 255 264 Q 268 266 265 258 Q 262 250 255 252 Z"
+        fill="#22c55e" stroke="#0f172a" stroke-width="1.5"/>
+  <!-- Blue piece -->
+  <path d="M 220 280 L 255 280 L 255 302 Q 242 300 245 308 Q 248 316 255 314 L 255 330 L 220 330 L 220 308 Q 207 309 210 302 Q 213 295 220 298 Z"
+        fill="#3b82f6" stroke="#0f172a" stroke-width="1.5"/>
+  <!-- Yellow piece -->
+  <path d="M 255 280 L 292 280 L 292 298 Q 305 295 302 302 Q 299 309 292 308 L 292 330 L 255 330 L 255 314 Q 262 316 265 308 Q 268 300 255 302 Z"
+        fill="#facc15" stroke="#0f172a" stroke-width="1.5"/>
+
+  <!-- ── Floating elements: 3-D cube top-center ── -->
+  <g transform="translate(258,104)" filter="url(#sparkleGlow)">
+    <!-- cube top face -->
+    <polygon points="0,-22 22,-11 0,0 -22,-11" fill="#4ade80"/>
+    <!-- cube right face -->
+    <polygon points="22,-11 22,11 0,22 0,0" fill="#22c55e"/>
+    <!-- cube left face -->
+    <polygon points="-22,-11 0,0 0,22 -22,11" fill="#86efac"/>
+  </g>
+
+  <!-- Musical note right -->
+  <g transform="translate(380,148)" fill="#f472b6" opacity="0.9" filter="url(#sparkleGlow)">
+    <rect x="0" y="-20" width="5" height="22" rx="2"/>
+    <ellipse cx="-4" cy="2" rx="7" ry="5" transform="rotate(-20,-4,2)"/>
+    <rect x="13" y="-26" width="5" height="22" rx="2"/>
+    <ellipse cx="9" cy="-4" rx="7" ry="5" transform="rotate(-20,9,-4)"/>
+    <line x1="5" y1="-20" x2="18" y2="-26" stroke="#f472b6" stroke-width="2"/>
+  </g>
+
+  <!-- Butterfly top-right -->
+  <g transform="translate(408,168) rotate(-20)" opacity="0.95">
+    <ellipse cx="-14" cy="-10" rx="14" ry="9"  fill="#fb923c" opacity="0.9"/>
+    <ellipse cx="14"  cy="-10" rx="14" ry="9"  fill="#f97316" opacity="0.9"/>
+    <ellipse cx="-10" cy="4"  rx="9"  ry="6"  fill="#fdba74" opacity="0.85"/>
+    <ellipse cx="10"  cy="4"  rx="9"  ry="6"  fill="#fb923c" opacity="0.85"/>
+    <!-- body -->
+    <ellipse cx="0" cy="-2" rx="3" ry="10" fill="#1e293b"/>
+    <!-- antennae -->
+    <line x1="-2" y1="-12" x2="-10" y2="-24" stroke="#1e293b" stroke-width="1.5"/>
+    <circle cx="-10" cy="-24" r="2.5" fill="#f97316"/>
+    <line x1="2" y1="-12" x2="10" y2="-24" stroke="#1e293b" stroke-width="1.5"/>
+    <circle cx="10" cy="-24" r="2.5" fill="#fb923c"/>
+  </g>
+
+  <!-- ── Sparkles scattered ── -->
+  <g filter="url(#sparkleGlow)" opacity="0.9">
+    <!-- sparkle helper: 4-point star drawn as two rotated rects -->
+    <!-- sparkle 1 top-left area -->
+    <g transform="translate(100,160) rotate(0)">
+      <rect x="-1.5" y="-10" width="3" height="20" rx="1.5" fill="#facc15"/>
+      <rect x="-10" y="-1.5" width="20" height="3" rx="1.5" fill="#facc15"/>
+    </g>
+    <!-- sparkle 2 -->
+    <g transform="translate(145,148) rotate(45)" scale="0.7">
+      <rect x="-1.5" y="-10" width="3" height="20" rx="1.5" fill="#818cf8"/>
+      <rect x="-10" y="-1.5" width="20" height="3" rx="1.5" fill="#818cf8"/>
+    </g>
+    <!-- sparkle 3 -->
+    <g transform="translate(68,310)" scale="0.8">
+      <rect x="-1.5" y="-10" width="3" height="20" rx="1.5" fill="#38bdf8"/>
+      <rect x="-10" y="-1.5" width="20" height="3" rx="1.5" fill="#38bdf8"/>
+    </g>
+    <!-- sparkle 4 right side -->
+    <g transform="translate(445,310) rotate(20)" scale="0.75">
+      <rect x="-1.5" y="-10" width="3" height="20" rx="1.5" fill="#4ade80"/>
+      <rect x="-10" y="-1.5" width="20" height="3" rx="1.5" fill="#4ade80"/>
+    </g>
+    <!-- sparkle 5 -->
+    <g transform="translate(430,190) rotate(10)" scale="0.6">
+      <rect x="-1.5" y="-10" width="3" height="20" rx="1.5" fill="#f472b6"/>
+      <rect x="-10" y="-1.5" width="20" height="3" rx="1.5" fill="#f472b6"/>
+    </g>
+    <!-- small dots -->
+    <circle cx="188" cy="170" r="3" fill="#facc15"/>
+    <circle cx="325" cy="155" r="3" fill="#4ade80"/>
+    <circle cx="72" cy="255" r="2.5" fill="#818cf8"/>
+    <circle cx="442" cy="245" r="2.5" fill="#fb923c"/>
+    <circle cx="462" cy="185" r="2" fill="#38bdf8"/>
+    <circle cx="50" cy="185" r="2" fill="#f472b6"/>
+  </g>
+
+  <!-- ── "AR" text ── -->
+  <text x="256" y="372"
+    font-family="'Trebuchet MS', 'Impact', sans-serif"
+    font-size="62"
+    font-weight="900"
+    text-anchor="middle"
+    fill="url(#arGrad)"
+    letter-spacing="4">AR</text>
+
+  <!-- ── "AUTISTIC REALITY" text ── -->
+  <text x="256" y="412"
+    font-family="'Trebuchet MS', 'Impact', sans-serif"
+    font-size="36"
+    font-weight="900"
+    text-anchor="middle"
+    fill="url(#titleGrad)"
+    letter-spacing="2">AUTISTIC REALITY</text>
+
+  <!-- ── Tagline pill ── -->
+  <rect x="112" y="426" width="288" height="32" rx="16" fill="url(#pillGrad)" stroke="#334155" stroke-width="1.5"/>
+  <text x="256" y="447"
+    font-family="'Trebuchet MS', 'Segoe UI', sans-serif"
+    font-size="16"
+    font-weight="600"
+    text-anchor="middle"
+    fill="#e2e8f0"
+    letter-spacing="0.5">Sensory &amp; Interactive Learning</text>
+</svg>
